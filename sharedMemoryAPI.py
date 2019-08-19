@@ -5,7 +5,10 @@ and add access functions to it.
 # pylint: disable=bad-indentation
 # pylint: disable=invalid-name
 
-from . import rF2data
+try:
+    from . import rF2data
+except: # standalone, not package
+    import rF2data
 
 class SimInfoAPI(rF2data.SimInfo):
   """
@@ -17,6 +20,32 @@ class SimInfoAPI(rF2data.SimInfo):
     self.minimumSupportedVersionParts = ['3', '6', '0', '0']
     self.versionCheckMsg = self.versionCheck()
 
+  def rF2RunningCheck(self):
+    """ 
+    Doesn't work. Both "rFactor 2 Launcher" and "rf2" processes are found
+    whether it's the launcher or the game that's running
+    """
+    try:
+        import win32gui  # Needs pywin
+
+        toplist = []
+        winlist = []
+        def enum_callback(hwnd, results):
+            winlist.append((hwnd, win32gui.GetWindowText(hwnd)))
+
+        win32gui.EnumWindows(enum_callback, toplist)
+
+        #for hwnd, title in winlist:
+        #    print(title)
+
+        rf2 = [(hwnd, title) for hwnd, title in winlist if title.lower() == ('rf2')]
+        # just grab the first window that matches
+        if len(rf2):
+          rf2 = rf2[0]
+        return rf2
+    except:
+        return None
+
   def versionCheck(self):
     """
     Lifted from
@@ -27,7 +56,9 @@ class SimInfoAPI(rF2data.SimInfo):
     msg = ''
 
     if versionStr == '':
-        msg = "rFactor 2 Shared Memory not present."
+        msg = "\nrFactor 2 not running or Shared Memory not present.\n" \
+            "Shared Memory is installed by Crew Chief or you can install it yourself, see\n" \
+            "https://forum.studio-397.com/index.php?threads/rf2-shared-memory-tools-for-developers.54282/"
         return msg
 
     versionParts = versionStr.split('.')
@@ -61,13 +92,13 @@ class SimInfoAPI(rF2data.SimInfo):
             + minVerStr \
             + "  Please update rFactor2SharedMemoryMapPlugin64.dll"
     else:
-        msg = "rFactor 2 Shared Memory\nversion: " + versionStr + " 64bit."
-            #tbd + (shared.extended.mDirectMemoryAccessEnabled != 0
-            # && shared.extended.mSCRPluginEnabled != 0 ?
-            # ("  Stock Car Rules plugin enabled. '\
-            # '(DFT:" + shared.extended.mSCRPluginDoubleFileType + ")")  :"") \
-            #tbd + (shared.extended.mDirectMemoryAccessEnabled != 0 ?
-            #"  DMA enabled." : "")
+        msg = "\nrFactor 2 Shared Memory\nversion: " + versionStr + " 64bit."
+        if self.Rf2Ext.mDirectMemoryAccessEnabled:
+            if self.Rf2Ext.mSCRPluginEnabled:
+                msg += "  Stock Car Rules plugin enabled. (DFT:%d" % \
+                    self.Rf2Ext.mSCRPluginDoubleFileType
+            else:
+                msg += "  DMA enabled."
 
     # Only verify once.
     return msg
@@ -140,10 +171,7 @@ class SimInfoAPI(rF2data.SimInfo):
 
 def Cbytestring2Python(bytestring):
     """
-    length is size of bytestring buffer
-    version = ''.join(chr(i) for i in bytestring[0:length]).rstrip('\0')
-    version2 = bytes(bytestring[0:length]).partition(b'\0')[0]
-    version3 = bytes(bytestring[0:length]).decode()
+    C string to Python string
     """
     return bytes(bytestring).partition(b'\0')[0].decode().rstrip()
 
@@ -175,6 +203,9 @@ def test_main():
     version = Cbytestring2Python(info.Rf2Ext.mVersion)
     # 2019/04/23:  3.5.0.9
     print(version)
+
+    rf2 = info.rF2RunningCheck()
+    print(rf2)
 
     if info.isRF2running():
       print('Memory map is loaded')
