@@ -5,6 +5,8 @@ and add access functions to it.
 # pylint: disable=bad-indentation
 # pylint: disable=invalid-name
 
+import psutil
+
 try:
     from . import rF2data
 except: # standalone, not package
@@ -20,31 +22,21 @@ class SimInfoAPI(rF2data.SimInfo):
     self.minimumSupportedVersionParts = ['3', '6', '0', '0']
     self.versionCheckMsg = self.versionCheck()
 
-  def rF2RunningCheck(self):
+  def isRF2running(self):
     """ 
-    Doesn't work. Both "rFactor 2 Launcher" and "rf2" processes are found
-    whether it's the launcher or the game that's running
+    Both "rFactor 2 Launcher" and "rf2" processes are found
+    whether it's the launcher or the game that's running BUT
+    rfactor2.exe is only present if the game is running.
     """
-    try:
-        import win32gui  # Needs pywin
+    for pid in psutil.pids():
+        try:
+            p = psutil.Process(pid)
+        except psutil.NoSuchProcess:
+            continue
+        if p.name().lower().startswith('rfactor2.exe'):
+            return True
 
-        toplist = []
-        winlist = []
-        def enum_callback(hwnd, results):
-            winlist.append((hwnd, win32gui.GetWindowText(hwnd)))
-
-        win32gui.EnumWindows(enum_callback, toplist)
-
-        #for hwnd, title in winlist:
-        #    print(title)
-
-        rf2 = [(hwnd, title) for hwnd, title in winlist if title.lower() == ('rf2')]
-        # just grab the first window that matches
-        if len(rf2):
-          rf2 = rf2[0]
-        return rf2
-    except:
-        return None
+    return False
 
   def versionCheck(self):
     """
@@ -56,7 +48,7 @@ class SimInfoAPI(rF2data.SimInfo):
     msg = ''
 
     if versionStr == '':
-        msg = "\nrFactor 2 not running or Shared Memory not present.\n" \
+        msg = "\nrFactor 2 Shared Memory not present.\n" \
             "Shared Memory is installed by Crew Chief or you can install it yourself, see\n" \
             "https://forum.studio-397.com/index.php?threads/rf2-shared-memory-tools-for-developers.54282/"
         return msg
@@ -106,7 +98,7 @@ class SimInfoAPI(rF2data.SimInfo):
 
   ###########################################################
   # Access functions
-  def isRF2running(self):
+  def isSharedMemoryAvailable(self):
     """
     True: rF2 is running and the memory map is loaded
     """
@@ -204,10 +196,10 @@ def test_main():
     # 2019/04/23:  3.5.0.9
     print(version)
 
-    rf2 = info.rF2RunningCheck()
-    print(rf2)
-
     if info.isRF2running():
+        print('rfactor2.exe is running')
+
+    if info.isSharedMemoryAvailable():
       print('Memory map is loaded')
     else:
       print('Memory map is not loaded')
