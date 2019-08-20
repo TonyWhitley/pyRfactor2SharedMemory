@@ -21,6 +21,19 @@ class SimInfoAPI(rF2data.SimInfo):
     self.player = 0
     self.minimumSupportedVersionParts = ['3', '6', '0', '0']
     self.versionCheckMsg = self.versionCheck()
+    self.rf2_pid = None
+    self.find_rf2_pid()
+
+  def find_rf2_pid(self):
+    """ Find the process ID for rfactor2.exe.  Takes a while """
+    for pid in psutil.pids():
+        try:
+            p = psutil.Process(pid)
+        except psutil.NoSuchProcess:
+            continue
+        if p.name().lower().startswith('rfactor2.exe'):
+            self.rf2_pid = pid
+            break
 
   def isRF2running(self):
     """ 
@@ -28,14 +41,16 @@ class SimInfoAPI(rF2data.SimInfo):
     whether it's the launcher or the game that's running BUT
     rfactor2.exe is only present if the game is running.
     """
-    for pid in psutil.pids():
+    if self.rf2_pid:
         try:
-            p = psutil.Process(pid)
+            p = psutil.Process(self.rf2_pid)
         except psutil.NoSuchProcess:
-            continue
+            self.rf2_pid = None
+            return False
         if p.name().lower().startswith('rfactor2.exe'):
             return True
-
+    else:
+        self.find_rf2_pid()
     return False
 
   def versionCheck(self):
