@@ -1,5 +1,8 @@
-# Python mapping of The Iron Wolf's rF2 Shared Memory Tools
-# Auto-generated from rF2data.cs
+"""
+Python mapping of The Iron Wolf's rF2 Shared Memory Tools
+Auto-generated from rF2data.cs
+"""
+# pylint: disable=C,R,W
 
 from enum import IntEnum
 import ctypes
@@ -11,6 +14,7 @@ class CtypesEnum(IntEnum):
     """A ctypes-compatible IntEnum superclass."""
     @classmethod
     def from_param(cls, obj):
+        """ docstring """
         return int(obj)
 
 class rFactor2Constants:

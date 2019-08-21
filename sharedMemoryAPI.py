@@ -1,6 +1,16 @@
-# Inherit Python mapping of The Iron Wolf's rF2 Shared Memory Tools
-# and add access functions to it.
-from . import rF2data
+"""
+Inherit Python mapping of The Iron Wolf's rF2 Shared Memory Tools
+and add access functions to it.
+"""
+# pylint: disable=bad-indentation
+# pylint: disable=invalid-name
+
+import psutil
+
+try:
+    from . import rF2data
+except: # standalone, not package
+    import rF2data
 
 class SimInfoAPI(rF2data.SimInfo):
   """
@@ -9,16 +19,54 @@ class SimInfoAPI(rF2data.SimInfo):
   def __init__(self):
     rF2data.SimInfo.__init__(self)
     self.player = 0
-    self.minimumSupportedVersionParts = [ '3', '6', '0', '0' ]
+    self.minimumSupportedVersionParts = ['3', '6', '0', '0']
     self.versionCheckMsg = self.versionCheck()
+    self.rf2_pid = None
+    self.find_rf2_pid()
+
+  def find_rf2_pid(self):
+    """ Find the process ID for rfactor2.exe.  Takes a while """
+    for pid in psutil.pids():
+        try:
+            p = psutil.Process(pid)
+        except psutil.NoSuchProcess:
+            continue
+        if p.name().lower().startswith('rfactor2.exe'):
+            self.rf2_pid = pid
+            break
+
+  def isRF2running(self):
+    """ 
+    Both "rFactor 2 Launcher" and "rf2" processes are found
+    whether it's the launcher or the game that's running BUT
+    rfactor2.exe is only present if the game is running.
+    """
+    if self.rf2_pid:
+        try:
+            p = psutil.Process(self.rf2_pid)
+        except psutil.NoSuchProcess:
+            self.rf2_pid = None
+            return False
+        if p.name().lower().startswith('rfactor2.exe'):
+            return True
+    else:
+        self.find_rf2_pid()
+    return False
 
   def versionCheck(self):
     """
-    Lifted from https://gitlab.com/mr_belowski/CrewChiefV4/blob/master/CrewChiefV4/RF2/RF2GameStateMapper.cs
+    Lifted from
+    https://gitlab.com/mr_belowski/CrewChiefV4/blob/master/CrewChiefV4/RF2/RF2GameStateMapper.cs
     and translated.
     """
     versionStr = Cbytestring2Python(self.Rf2Ext.mVersion)
     msg = ''
+
+    if versionStr == '':
+        msg = "\nrFactor 2 Shared Memory not present.\n" \
+            "Shared Memory is installed by Crew Chief or you can install it yourself, see\n" \
+            "https://forum.studio-397.com/index.php?threads/rf2-shared-memory-tools-for-developers.54282/"
+        return msg
 
     versionParts = versionStr.split('.')
     if len(versionParts) != 4:
@@ -32,8 +80,9 @@ class SimInfoAPI(rF2data.SimInfo):
         versionPart = 0
         try:
           versionPart = int(versionParts[i])
-        except:
-            msg = "Corrupt or leaked rFactor 2 Shared Memory version.  Version string: " + versionStr
+        except: # pylint: disable=bare-except
+            msg = "Corrupt or leaked rFactor 2 Shared Memory version.  Version string: " \
+                + versionStr
             return msg
 
         smVer += (versionPart * partFactor)
@@ -50,9 +99,13 @@ class SimInfoAPI(rF2data.SimInfo):
             + minVerStr \
             + "  Please update rFactor2SharedMemoryMapPlugin64.dll"
     else:
-        msg = "rFactor 2 Shared Memory\nversion: " + versionStr + " 64bit."
-            #tbd + (shared.extended.mDirectMemoryAccessEnabled != 0 && shared.extended.mSCRPluginEnabled != 0 ? ("  Stock Car Rules plugin enabled. (DFT:" + shared.extended.mSCRPluginDoubleFileType + ")")  :"") \
-            #tbd + (shared.extended.mDirectMemoryAccessEnabled != 0 ? "  DMA enabled." : "")
+        msg = "\nrFactor 2 Shared Memory\nversion: " + versionStr + " 64bit."
+        if self.Rf2Ext.mDirectMemoryAccessEnabled:
+            if self.Rf2Ext.mSCRPluginEnabled:
+                msg += "  Stock Car Rules plugin enabled. (DFT:%d" % \
+                    self.Rf2Ext.mSCRPluginDoubleFileType
+            else:
+                msg += "  DMA enabled."
 
     # Only verify once.
     return msg
@@ -60,7 +113,7 @@ class SimInfoAPI(rF2data.SimInfo):
 
   ###########################################################
   # Access functions
-  def isRF2running(self):
+  def isSharedMemoryAvailable(self):
     """
     True: rF2 is running and the memory map is loaded
     """
@@ -80,21 +133,26 @@ class SimInfoAPI(rF2data.SimInfo):
     True: rF2 is running and the player is on track
     """
     realtime = self.Rf2Ext.mInRealtimeFC
-    ret = realtime != 0
     return realtime != 0
 
   def isAiDriving(self):
     """
     True: rF2 is running and the player is on track
     """
-    return self.Rf2Scor.mVehicles[self.player].mControl == 1  # who's in control: -1=nobody (shouldn't get this), 0=local player, 1=local AI, 2=remote, 3=replay (shouldn't get this)
+    return self.Rf2Scor.mVehicles[self.player].mControl == 1
+    # who's in control: -1=nobody (shouldn't get this), 0=local player,
+    # 1=local AI, 2=remote, 3=replay (shouldn't get this)
+
     # didn't work self.Rf2Ext.mPhysics.mAIControl
 
   def driverName(self):
+    """
+    Get the player's name
+    """
     return Cbytestring2Python(self.Rf2Scor.mVehicles[self.player].mDriverName)
 
   def playersVehicleTelemetry(self):
-    # Find the player's driver number
+    """ Find the player's driver number """
     for player in range(50): #self.Rf2Tele.mVehicles[0].mNumVehicles:
       if self.Rf2Scor.mVehicles[player].mIsPlayer:
         self.player = player
@@ -103,7 +161,7 @@ class SimInfoAPI(rF2data.SimInfo):
     return self.Rf2Tele.mVehicles[self.player]
 
   def playersVehicleScoring(self):
-    # Get the variable for the player's vehicle
+    """ Get the variable for the player's vehicle """
     return self.Rf2Scor.mVehicles[self.player]
 
   def close(self):
@@ -120,14 +178,12 @@ class SimInfoAPI(rF2data.SimInfo):
 
 def Cbytestring2Python(bytestring):
     """
-    length is size of bytestring buffer
-    version = ''.join(chr(i) for i in bytestring[0:length]).rstrip('\0')
-    version2 = bytes(bytestring[0:length]).partition(b'\0')[0]
-    version3 = bytes(bytestring[0:length]).decode()
+    C string to Python string
     """
     return bytes(bytestring).partition(b'\0')[0].decode().rstrip()
 
 def test_main():
+    # pylint: disable=E,W,R,C
     # Example usage
     info = SimInfoAPI()
     print(info.versionCheckMsg)
@@ -144,18 +200,21 @@ def test_main():
     driver = Cbytestring2Python(info.playersVehicleScoring().mDriverName)
     print('%s Gear: %d, Clutch position: %d' % (driver, gear, clutch))
 
-    vehicleName = Cbytestring2Python(info.playersVehicleScoring().mVehicleName)
+    _vehicleName = Cbytestring2Python(info.playersVehicleScoring().mVehicleName)
     trackName = Cbytestring2Python(info.Rf2Scor.mScoringInfo.mTrackName)
-    vehicleClass = Cbytestring2Python(info.playersVehicleScoring().mVehicleClass)
+    _vehicleClass = Cbytestring2Python(info.playersVehicleScoring().mVehicleClass)
 
     started = info.Rf2Ext.mSessionStarted
     realtime = info.Rf2Ext.mInRealtimeFC
-    ai = info.isAiDriving()
 
     version = Cbytestring2Python(info.Rf2Ext.mVersion)
     # 2019/04/23:  3.5.0.9
+    print(version)
 
     if info.isRF2running():
+        print('rfactor2.exe is running')
+
+    if info.isSharedMemoryAvailable():
       print('Memory map is loaded')
     else:
       print('Memory map is not loaded')
@@ -171,9 +230,14 @@ def test_main():
       print('Driver "%s" is on track' % driver)
     else:
       print('Driver is not on track')
+
+    if info.isAiDriving():
+      print('AI is driving the car')
+    else:
+      print('Car not under AI control')
+
     return 'OK'
 
 
 if __name__ == '__main__':
   test_main()
-
