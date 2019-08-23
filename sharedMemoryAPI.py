@@ -233,10 +233,11 @@ def test_main():    # pylint: disable=too-many-statements
 
                     _vehicleName = Cbytestring2Python(
                         info.playersVehicleScoring().mVehicleName)
-                    trackName = Cbytestring2Python(
-                        info.Rf2Scor.mScoringInfo.mTrackName)
                     _vehicleClass = Cbytestring2Python(
                         info.playersVehicleScoring().mVehicleClass)
+
+                    print('vehicleName:', _vehicleName)
+                    print('vehicleClass:', _vehicleClass)
 
                     started = info.Rf2Ext.mSessionStarted
                     print('SessionStarted:', started)
@@ -279,7 +280,7 @@ def test_main():    # pylint: disable=too-many-statements
             print('Incorrect shared memory')
     else:
         print('rFactor 2 not running')
-
+    return 'OK'
 
 if __name__ == '__main__':
     test_main()
