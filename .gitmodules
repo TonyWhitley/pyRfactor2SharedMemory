@@ -1,0 +1,3 @@
+[submodule "hpp2py"]
+	path = hpp2py
+	url = https://github.com/TonyWhitley/hpp2py
