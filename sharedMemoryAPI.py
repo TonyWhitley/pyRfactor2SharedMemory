@@ -21,7 +21,9 @@ class SimInfoAPI(rF2data.SimInfo):
 
     sharedMemoryVerified = False
     minimumSupportedVersionParts = ['3', '6', '0', '0']
-    rf2_pid = None
+    rf2_pid = None          # Once we've found rF2 running
+    rf2_pid_counter = 0     # Counter to check if running
+    rf2_running = False
 
     def __init__(self):
         rF2data.SimInfo.__init__(self)
@@ -108,23 +110,37 @@ class SimInfoAPI(rF2data.SimInfo):
     ###########################################################
     # Access functions
 
-    def isRF2running(self):
+    def isRF2running(self, find_counter=200, found_counter=5):
         """
         Both "rFactor 2 Launcher" and "rf2" processes are found
         whether it's the launcher or the game that's running BUT
         rfactor2.exe is only present if the game is running.
+        Beacuse this takes some time, control how often it's checked using:
+        find_counter: how often to check if rF2 is not running
+        found_counter: how often to check once rF2 is running
         """
-        if self.rf2_pid:
-            try:
-                p = psutil.Process(self.rf2_pid)
-            except psutil.NoSuchProcess:
-                self.rf2_pid = None
-                return False
-            if p.name().lower().startswith('rfactor2.exe'):
-                return True
+        if self.rf2_pid_counter == 0: # first time
+            self.rf2_pid_counter = find_counter
+        if self.isSharedMemoryAvailable():
+            # No need to check if Shared Memory is OK!
+            self.rf2_running = True
+        elif self.rf2_pid:
+            if self.rf2_pid_counter >= found_counter:
+                self.rf2_pid_counter = 0
+                try:
+                    p = psutil.Process(self.rf2_pid)
+                except psutil.NoSuchProcess:
+                    self.rf2_pid = None
+                    return False
+                if p.name().lower().startswith('rfactor2.exe'):
+                    self.rf2_running = True
         else:
-            self.__find_rf2_pid()
-        return False
+            if self.rf2_pid_counter >= find_counter:
+                self.rf2_pid_counter = 0
+                self.__find_rf2_pid()
+                self.rf2_running = False
+        self.rf2_pid_counter += 1
+        return self.rf2_running
 
     def isSharedMemoryAvailable(self):
         """
