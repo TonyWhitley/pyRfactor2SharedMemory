@@ -206,7 +206,19 @@ def Cbytestring2Python(bytestring):
     """
     C string to Python string
     """
-    return bytes(bytestring).partition(b'\0')[0].decode().rstrip()
+    try:
+        return bytes(bytestring).partition(b'\0')[0].decode('utf_8').rstrip()
+    except:
+        pass
+    try:    # Codepage 1252 includes Scandinavian characters
+        return bytes(bytestring).partition(b'\0')[0].decode('cp1252').rstrip()
+    except:
+        pass
+    try:    # OK, struggling, just ignore errors
+        return bytes(bytestring).partition(b'\0')[0].decode('utf_8', 'ignore').rstrip()
+    except Exception as e:
+        print('Trouble decoding a string')
+        print(e)
 
 def test_main():    # pylint: disable=too-many-statements
     """ Example usage """
@@ -296,6 +308,27 @@ def test_main():    # pylint: disable=too-many-statements
             print('Incorrect shared memory')
     else:
         print('rFactor 2 not running')
+
+    if info.isTrackLoaded():
+      trackName = Cbytestring2Python(info.Rf2Scor.mScoringInfo.mTrackName)
+      print('%s is loaded' % trackName)
+    else:
+      print('Track is not loaded')
+
+    if info.isOnTrack():
+      driver = Cbytestring2Python(info.playersVehicleScoring().mDriverName)
+      print('Driver "%s" is on track' % driver)
+    else:
+      print('Driver is not on track')
+
+    if info.isAiDriving():
+      print('AI is driving the car')
+    else:
+      print('Car not under AI control')
+
+
+    s = bytearray(range (0xA1, 0xff))
+    print(Cbytestring2Python(s))
     return 'OK'
 
 if __name__ == '__main__':
