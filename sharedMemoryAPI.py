@@ -5,7 +5,10 @@ and add access functions to it.
 # pylint: disable=bad-indentation
 # pylint: disable=invalid-name
 
-from . import rF2data
+try:
+    from . import rF2data
+except:
+    import rF2data
 
 class SimInfoAPI(rF2data.SimInfo):
   """
@@ -145,7 +148,19 @@ def Cbytestring2Python(bytestring):
     version2 = bytes(bytestring[0:length]).partition(b'\0')[0]
     version3 = bytes(bytestring[0:length]).decode()
     """
-    return bytes(bytestring).partition(b'\0')[0].decode().rstrip()
+    try:
+        return bytes(bytestring).partition(b'\0')[0].decode('utf_8').rstrip()
+    except:
+        pass
+    try:    # Codepage 1252 includes Scandinavian characters
+        return bytes(bytestring).partition(b'\0')[0].decode('cp1252').rstrip()
+    except:
+        pass
+    try:    # OK, struggling, just ignore errors
+        return bytes(bytestring).partition(b'\0')[0].decode('utf_8', 'ignore').rstrip()
+    except Exception as e:
+        print('Trouble decoding a string')
+        print(e)
 
 def test_main():
     # pylint: disable=E,W,R,C
@@ -198,6 +213,9 @@ def test_main():
     else:
       print('Car not under AI control')
 
+
+    s = bytearray(range (0xA1, 0xff))
+    print(Cbytestring2Python(s))
     return 'OK'
 
 
