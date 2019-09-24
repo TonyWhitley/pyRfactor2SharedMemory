@@ -309,24 +309,6 @@ def test_main():    # pylint: disable=too-many-statements
     else:
         print('rFactor 2 not running')
 
-    if info.isTrackLoaded():
-      trackName = Cbytestring2Python(info.Rf2Scor.mScoringInfo.mTrackName)
-      print('%s is loaded' % trackName)
-    else:
-      print('Track is not loaded')
-
-    if info.isOnTrack():
-      driver = Cbytestring2Python(info.playersVehicleScoring().mDriverName)
-      print('Driver "%s" is on track' % driver)
-    else:
-      print('Driver is not on track')
-
-    if info.isAiDriving():
-      print('AI is driving the car')
-    else:
-      print('Car not under AI control')
-
-
     s = bytearray(range (0xA1, 0xff))
     print(Cbytestring2Python(s))
     return 'OK'
