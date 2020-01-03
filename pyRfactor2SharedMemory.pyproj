@@ -12,6 +12,9 @@
     <Name>pyRfactor2SharedMemory</Name>
     <RootNamespace>pyRfactor2SharedMemory</RootNamespace>
     <InterpreterId>MSBuild|env|$(MSBuildProjectFullPath)</InterpreterId>
+    <TestFramework>unittest</TestFramework>
+    <UnitTestPattern>test*.py</UnitTestPattern>
+    <UnitTestRootDirectory>.</UnitTestRootDirectory>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -25,6 +28,7 @@
     <Compile Include="rF2data.py" />
     <Compile Include="sharedMemoryAPI.py" />
     <Compile Include="tests\test_sharedMemoryAPI.py" />
+    <Compile Include="tests\__init__.py" />
     <Compile Include="__init__.py" />
   </ItemGroup>
   <ItemGroup>
@@ -37,8 +41,19 @@
       <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
       <Architecture>X64</Architecture>
     </Interpreter>
+    <Interpreter Include="pylint\">
+      <Id>pylint</Id>
+      <Version>3.7</Version>
+      <Description>pylint (Python 3.7 (64-bit))</Description>
+      <InterpreterPath>Scripts\python.exe</InterpreterPath>
+      <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
+      <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
+      <Architecture>X64</Architecture>
+    </Interpreter>
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".pylintrc" />
+    <Content Include="autopep8tree.bat" />
     <Content Include="requirements.txt" />
   </ItemGroup>
   <ItemGroup>

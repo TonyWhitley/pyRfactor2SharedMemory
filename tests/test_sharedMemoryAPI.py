@@ -5,6 +5,7 @@ from sharedMemoryAPI import test_main, SimInfoAPI, Cbytestring2Python
 VERSION_STRING = '3.6.0.0     '
 TRACK_NAME = 'Test Track'
 
+
 def str_to_byte_array(string):
     x = bytearray(string, 'utf-8')
     byte_array = bytearray()
@@ -12,11 +13,13 @@ def str_to_byte_array(string):
         byte_array[i] = ch
     return byte_array
 
+
 class Test_sharedMemoryAPI(unittest.TestCase):
     def test_sharedMemoryAPI_main_runs(self):
         """ Preliminary test - does main run? """
         root = test_main()
-        assert root != None
+        assert root is not None
+
     def test_pokeMemoryMap(self):
         info = SimInfoAPI()
         x = bytearray(VERSION_STRING, 'utf-8')
@@ -26,7 +29,7 @@ class Test_sharedMemoryAPI(unittest.TestCase):
         y = VERSION_STRING.encode()
         info.Rf2Ext.is64bit = 1
         print(info.isSharedMemoryAvailable())
-        assert info.isSharedMemoryAvailable() != None
+        assert info.isSharedMemoryAvailable() is not None
 
     def test_is_track_loaded(self):
         info = SimInfoAPI()
@@ -46,5 +49,6 @@ class Test_sharedMemoryAPI(unittest.TestCase):
         info.Rf2Ext.mInRealtimeFC = 1
         assert info.isOnTrack()
 
+
 if __name__ == '__main__':
-  unittest.main(exit=False)
+    unittest.main(exit=False)

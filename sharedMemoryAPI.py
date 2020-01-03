@@ -8,16 +8,17 @@ import psutil
 
 try:
     from . import rF2data
-except ImportError: # standalone, not package
+except ImportError:  # standalone, not package
     import rF2data
+
 
 class SimInfoAPI(rF2data.SimInfo):
     """
     API for rF2 shared memory
     """
     __HELP = "\nShared Memory is installed by Crew Chief or you can install it yourself.\n" \
-    "Please update rFactor2SharedMemoryMapPlugin64.dll, see\n" \
-    "https://forum.studio-397.com/index.php?threads/rf2-shared-memory-tools-for-developers.54282/"
+        "Please update rFactor2SharedMemoryMapPlugin64.dll, see\n" \
+        "https://forum.studio-397.com/index.php?threads/rf2-shared-memory-tools-for-developers.54282/"
 
     sharedMemoryVerified = False
     minimumSupportedVersionParts = ['3', '6', '0', '0']
@@ -48,7 +49,7 @@ class SimInfoAPI(rF2data.SimInfo):
         versionParts = versionStr.split('.')
         if len(versionParts) != 4:
             msg = "Corrupt or leaked rFactor 2 Shared Memory.  Version string: " \
-                + versionStr +  self.__HELP
+                + versionStr + self.__HELP
             return msg
 
         smVer = 0
@@ -58,7 +59,7 @@ class SimInfoAPI(rF2data.SimInfo):
             versionPart = 0
             try:
                 versionPart = int(versionParts[i])
-            except: # pylint: disable=bare-except
+            except BaseException:  # pylint: disable=bare-except
                 msg = "Corrupt or leaked rFactor 2 Shared Memory version.  Version string: " \
                     + versionStr + self.__HELP
                 return msg
@@ -72,7 +73,7 @@ class SimInfoAPI(rF2data.SimInfo):
             msg = "Unsupported rFactor 2 Shared Memory version: " \
                 + versionStr \
                 + "  Minimum supported version is: " \
-                + minVerStr  + self.__HELP
+                + minVerStr + self.__HELP
         else:
             msg = "\nrFactor 2 Shared Memory\nversion: " + versionStr + " 64bit."
             if self.Rf2Ext.mDirectMemoryAccessEnabled:
@@ -102,7 +103,7 @@ class SimInfoAPI(rF2data.SimInfo):
 
     def __playersDriverNum(self):
         """ Find the player's driver number """
-        for _player in range(50): #self.Rf2Tele.mVehicles[0].mNumVehicles:
+        for _player in range(50):  # self.Rf2Tele.mVehicles[0].mNumVehicles:
             if self.Rf2Scor.mVehicles[_player].mIsPlayer:
                 break
         return _player
@@ -119,7 +120,7 @@ class SimInfoAPI(rF2data.SimInfo):
         find_counter: how often to check if rF2 is not running
         found_counter: how often to check once rF2 is running
         """
-        if self.rf2_pid_counter == 0: # first time
+        if self.rf2_pid_counter == 0:  # first time
             self.rf2_pid_counter = find_counter
         if self.isSharedMemoryAvailable():
             # No need to check if Shared Memory is OK!
@@ -196,11 +197,12 @@ class SimInfoAPI(rF2data.SimInfo):
             self._rf2_tele.close()
             self._rf2_scor.close()
             self._rf2_ext.close()
-        except BufferError: # "cannot close exported pointers exist"
+        except BufferError:  # "cannot close exported pointers exist"
             pass
 
     def __del__(self):
         self.close()
+
 
 def Cbytestring2Python(bytestring):
     """
@@ -208,17 +210,19 @@ def Cbytestring2Python(bytestring):
     """
     try:
         return bytes(bytestring).partition(b'\0')[0].decode('utf_8').rstrip()
-    except:
+    except BaseException:
         pass
     try:    # Codepage 1252 includes Scandinavian characters
         return bytes(bytestring).partition(b'\0')[0].decode('cp1252').rstrip()
-    except:
+    except BaseException:
         pass
     try:    # OK, struggling, just ignore errors
-        return bytes(bytestring).partition(b'\0')[0].decode('utf_8', 'ignore').rstrip()
+        return bytes(bytestring).partition(b'\0')[
+            0].decode('utf_8', 'ignore').rstrip()
     except Exception as e:
         print('Trouble decoding a string')
         print(e)
+
 
 def test_main():    # pylint: disable=too-many-statements
     """ Example usage """
@@ -309,9 +313,10 @@ def test_main():    # pylint: disable=too-many-statements
     else:
         print('rFactor 2 not running')
 
-    s = bytearray(range (0xA1, 0xff))
+    s = bytearray(range(0xA1, 0xff))
     print(Cbytestring2Python(s))
     return 'OK'
+
 
 if __name__ == '__main__':
     test_main()
