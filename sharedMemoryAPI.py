@@ -307,6 +307,13 @@ def test_main():    # pylint: disable=too-many-statements
             print(info.versionCheck())
             info.Rf2Ext.is64bit = 1
 
+            print('\nPit Menu')
+            while True:
+                if info.Rf2PitMenu.changed:
+                    print(Cbytestring2Python(
+                        info.Rf2PitMenu.mCategoryName))
+                    info.Rf2PitMenu.changed = 0
+
             print('\nOK')
         else:
             print('Incorrect shared memory')

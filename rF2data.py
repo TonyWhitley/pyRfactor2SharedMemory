@@ -631,12 +631,10 @@ class rF2PitMenu(ctypes.Structure):
         ('mCategoryIndex', ctypes.c_int),                  # index of the current category
         ('mCategoryName', ctypes.c_ubyte*32),
         ('mCategoryIndex', ctypes.c_int),                 # index of the current category
-        ('mChoiceIndex', ctypes.c_int),                    # index of the current choice (within the current category)
         ('mChoiceString', ctypes.c_ubyte*32),
-        ('mChoiceIndex', ctypes.c_int),                    # index of the current choice (within the current category)
         ('mNumChoices', ctypes.c_int),                     # total number of choices (0 < = mChoiceIndex < mNumChoices)
         ('changed', ctypes.c_ubyte),                       # Set if the Pit Display has changed
-        ('mExpansion', ctypes.c_ubyte*255),                # for future use
+        ('mExpansion', ctypes.c_ubyte*252),                # for future use
     ]
 
 class rF2HWControl(ctypes.Structure):
@@ -659,6 +657,8 @@ class SimInfo:
         self.Rf2Scor = rF2Scoring.from_buffer(self._rf2_scor)
         self._rf2_ext = mmap.mmap(0, ctypes.sizeof(rF2Extended), "$rFactor2SMMP_Extended$")
         self.Rf2Ext = rF2Extended.from_buffer(self._rf2_ext)
+        self._rf2_pit_menu = mmap.mmap(0, ctypes.sizeof(rF2PitMenu), "$rFactor2SMMP_PitMenu$")
+        self.Rf2PitMenu = rF2PitMenu.from_buffer(self._rf2_pit_menu)
 
     def close(self):
       # This didn't help with the errors
@@ -684,6 +684,5 @@ if __name__ == '__main__':
     gear   = info.Rf2Tele.mVehicles[0].mGear  # -1 to 6
     print('Map version: %s\n'
           'Gear: %d, Clutch position: %d' % (v, gear, clutch))
-
 
 
