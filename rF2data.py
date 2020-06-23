@@ -1,6 +1,7 @@
 """
 Python mapping of The Iron Wolf's rF2 Shared Memory Tools
 Auto-generated from rF2data.cs
+Hand-edited rF2PitMenu and rF2HWControl
 """
 # pylint: disable=C,R,W
 
@@ -43,6 +44,7 @@ class rFactor2Constants
         const string MM_SCORING_FILE_NAME = "$rFactor2SMMP_Scoring$";
         const string MM_RULES_FILE_NAME = "$rFactor2SMMP_Rules$";
         const string MM_EXTENDED_FILE_NAME = "$rFactor2SMMP_Extended$";
+        const string MM_PITMENU_FILE_NAME = "$rFactor2SMMP_PitMenu$";
         const int MAX_MAPPED_VEHICLES = 128;
         const int MAX_MAPPED_IDS = 512;
         const int MAX_STATUS_MSG_LEN = 128;
@@ -527,6 +529,38 @@ class rF2Rules(ctypes.Structure):
         ('mActions', rF2TrackRulesAction*rFactor2Constants.MAX_MAPPED_VEHICLES),
         ('mParticipants', rF2TrackRulesParticipant*rFactor2Constants.MAX_MAPPED_VEHICLES),
 ]
+#untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+class rF2ForceFeedback(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ('mVersionUpdateBegin', ctypes.c_int),          # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_int),            # Incremented after buffer write is done.
+        ('mForceValue', ctypes.c_double),                # Current FFB value reported via InternalsPlugin::ForceFeedback.
+    ]
+#untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+class rF2GraphicsInfo(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ('mCamPos', rF2Vec3),              # camera position
+        ('mCamOri', rF2Vec3*3),           # rows of orientation matrix (use TelemQuat conversions if desired), also converts local
+        ('mHWND', ctypes.c_ubyte*8),                # app handle
+        ('mAmbientRed', ctypes.c_double),
+        ('mAmbientGreen', ctypes.c_double),
+        ('mAmbientBlue', ctypes.c_double),
+        ('mID', ctypes.c_int),                    # slot ID being viewed (-1 if invalid)
+        ('mCameraType', ctypes.c_int),           # see above comments for possible values
+        ('mExpansion', ctypes.c_ubyte*128),         # for future use (possibly camera name)
+    ]
+#untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+"""
+class rF2Graphics(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ('mVersionUpdateBegin', ctypes.c_int),          # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_int),            # Incremented after buffer write is done.
+        ('rF2GraphicsInfo', mGraphicsInfo),
+    ]
+"""
 #untranslated [StructLayout(LayoutKind.Sequential, Pack = 4)]
 class rF2TrackedDamage(ctypes.Structure):
     _pack_ = 4
@@ -574,7 +608,7 @@ class rF2Extended(ctypes.Structure):
         ('mTicksStatusMessageUpdated', ctypes.c_double),
 #!!! Int64 mTicksStatusMessageUpdated;             # Ticks when status message was updated;
         ('mStatusMessage', ctypes.c_ubyte*rFactor2Constants.MAX_STATUS_MSG_LEN),
-        ('mTicksLastHistoryMessageUpdated', ctypes.c_double), 
+        ('mTicksLastHistoryMessageUpdated', ctypes.c_double),
 #!!! Int64 mTicksLastHistoryMessageUpdated;        # Ticks when last message history message was updated;
         ('mLastHistoryMessage', ctypes.c_ubyte*rFactor2Constants.MAX_STATUS_MSG_LEN),
         ('mCurrentPitSpeedLimit', ctypes.c_float),                # speed limit m/s.
@@ -588,7 +622,30 @@ class rF2Extended(ctypes.Structure):
         ('mLSIOrderInstructionMessage', ctypes.c_ubyte*rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN),
         ('mTicksLSIRulesInstructionMessageUpdated', ctypes.c_double),     # Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
         ('mLSIRulesInstructionMessage', ctypes.c_ubyte*rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN),
+        ('mUnsubscribedBuffersMask', ctypes.c_int),                     # Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
+    ]
+#untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
+class rF2PitMenu(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+        ('mCategoryIndex', ctypes.c_int),                  # index of the current category
+        ('mCategoryName', ctypes.c_ubyte*32),
+        ('mCategoryIndex', ctypes.c_int),                 # index of the current category
+        ('mChoiceIndex', ctypes.c_int),                    # index of the current choice (within the current category)
+        ('mChoiceString', ctypes.c_ubyte*32),
+        ('mChoiceIndex', ctypes.c_int),                    # index of the current choice (within the current category)
+        ('mNumChoices', ctypes.c_int),                     # total number of choices (0 < = mChoiceIndex < mNumChoices)
+        ('changed', ctypes.c_ubyte),                       # Set if the Pit Display has changed
+        ('mExpansion', ctypes.c_ubyte*255),                # for future use
+    ]
+
+class rF2HWControl(ctypes.Structure):
+    _pack_ = 4
+    _fields_ = [
+  ('mControlName', ctypes.c_ubyte *96),
+  ('mfRetVal', ctypes.c_int),
 ]
+
 #
 #
 
@@ -627,5 +684,6 @@ if __name__ == '__main__':
     gear   = info.Rf2Tele.mVehicles[0].mGear  # -1 to 6
     print('Map version: %s\n'
           'Gear: %d, Clutch position: %d' % (v, gear, clutch))
+
 
 
