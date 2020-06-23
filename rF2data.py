@@ -630,7 +630,7 @@ class rF2PitMenu(ctypes.Structure):
     _fields_ = [
         ('mCategoryIndex', ctypes.c_int),                  # index of the current category
         ('mCategoryName', ctypes.c_ubyte*32),
-        ('mCategoryIndex', ctypes.c_int),                 # index of the current category
+        ('mChoiceIndex', ctypes.c_int),                    # index of the current choice (within the current category)
         ('mChoiceString', ctypes.c_ubyte*32),
         ('mNumChoices', ctypes.c_int),                     # total number of choices (0 < = mChoiceIndex < mNumChoices)
         ('changed', ctypes.c_ubyte),                       # Set if the Pit Display has changed
