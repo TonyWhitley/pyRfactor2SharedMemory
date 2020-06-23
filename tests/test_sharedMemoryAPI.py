@@ -26,7 +26,7 @@ class Test_sharedMemoryAPI(unittest.TestCase):
         for i, ch in enumerate(x):
             info.Rf2Ext.mVersion[i] = ch
         #info.Rf2Ext.mVersion = str_to_byte_array(VERSION_STRING)
-        y = VERSION_STRING.encode()
+        __ = VERSION_STRING.encode()
         info.Rf2Ext.is64bit = 1
         print(info.isSharedMemoryAvailable())
         assert info.isSharedMemoryAvailable() is not None
@@ -43,6 +43,7 @@ class Test_sharedMemoryAPI(unittest.TestCase):
             info.Rf2Scor.mScoringInfo.mTrackName[i] = ch
         trackName = Cbytestring2Python(
             info.Rf2Scor.mScoringInfo.mTrackName)
+        assert trackName
 
     def test_is_on_track(self):
         info = SimInfoAPI()
