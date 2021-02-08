@@ -13,6 +13,7 @@ class rFactor2Constants:
   MAX_MAPPED_IDS = 512
   MAX_RULES_INSTRUCTION_MSG_LEN = 96
   MAX_STATUS_MSG_LEN = 128
+  MAX_HWCONTROL_NAME_LEN = 96
 
 
 """
@@ -90,7 +91,7 @@ class rF2Sector(Enum):
         Sector2 = 2
 
 class rF2FinishStatus(Enum):
-        None = 0
+        _None = 0
         Finished = 1
         Dnf = 2
         Dq = 3
@@ -371,9 +372,9 @@ class rF2PhysicsOptions(ctypes.Structure):
         ('mAutoBlip', ctypes.c_ubyte),                                       # 0 (off), 1 (on)
         ('mFuelMult', ctypes.c_ubyte),                                       # fuel multiplier (0x-7x)
         ('mTireMult', ctypes.c_ubyte),                                       # tire wear multiplier (0x-7x)
-byte mMechFail;                                       # mechanical failure setting; 0 (off), 1 (normal), 2 (timescaled)
+        ('mMechFail', ctypes.c_ubyte),                                       # mechanical failure setting; 0 (off), 1 (normal), 2 (timescaled)
         ('mAllowPitcrewPush', ctypes.c_ubyte),                               # 0 (off), 1 (on)
-byte mRepeatShifts;                                   # accidental repeat shift prevention (0-5; see PLR file)
+        ('mRepeatShifts', ctypes.c_ubyte),                                   # accidental repeat shift prevention (0-5; see PLR file)
         ('mHoldClutch', ctypes.c_ubyte),                                     # for auto-shifters at start of race: 0 (off), 1 (on)
         ('mAutoReverse', ctypes.c_ubyte),                                    # 0 (off), 1 (on)
         ('mAlternateNeutral', ctypes.c_ubyte),                               # Whether shifting up and down simultaneously equals neutral
@@ -396,7 +397,6 @@ class rF2TrackRulesCommand(Enum):
 #untranslated MoveToBack,                   // misbehavior during full-course yellow, resulting in the penalty of being moved to the back of their current line
 #untranslated LongestTime,                  // misbehavior during full-course yellow, resulting in the penalty of being moved to the back of the longest line
 #untranslated Maximum                       // should be last
-    ]
 #untranslated [StructLayout(LayoutKind.Sequential, Pack = 4)]
 class rF2TrackRulesAction(ctypes.Structure):
     _pack_ = 4
@@ -407,16 +407,15 @@ class rF2TrackRulesAction(ctypes.Structure):
     ]
 class rF2TrackRulesColumn(Enum):
         LeftLane = 0
-#untranslated MidLefLane,                    // mid-left
-#untranslated MiddleLane,                    // middle
-#untranslated MidrRghtLane,                  // mid-right
-#untranslated RightLane,                     // right (outside)
-#untranslated MaxLanes,                      // should be after the valid static lane choices
+        MidLefLane = 1                    # mid-left
+        MiddleLane = 2                    # middle
+        MidrRghtLane = 3                  # mid-right
+        RightLane = 4                     # right (outside)
+        MaxLanes = 5                      # should be after the valid static lane choices
         Invalid = MaxLanes
-#untranslated FreeChoice,                    // free choice (dynamically chosen by driver)
-#untranslated Pending,                       // depends on another participant's free choice (dynamically set after another driver chooses)
-#untranslated Maximum                        // should be last
-    ]
+        FreeChoice = 6                    # free choice (dynamically chosen by driver)
+        Pending = 7                       # depends on another participant's free choice (dynamically set after another driver chooses)
+        Maximum = 8                       # should be last
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2TrackRulesParticipant(ctypes.Structure):
     _pack_ = 4
@@ -426,14 +425,14 @@ class rF2TrackRulesParticipant(ctypes.Structure):
         ('mPlace', ctypes.c_short),                                         # 1-based place (typically used for the initialization of the formation lap track order)
         ('mYellowSeverity', ctypes.c_float),                                # a rating of how much this vehicle is contributing to a yellow flag (the sum of all vehicles is compared to TrackRulesV01::mSafetyCarThreshold)
         ('mCurrentRelativeDistance', ctypes.c_double),                      # equal to ( ( ScoringInfoV01::mLapDist * this->mRelativeLaps ) + VehicleScoringInfoV01::mLapDist )
-int mRelativeLaps;                                    # current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
+        ('mRelativeLaps', ctypes.c_int),                                    # current formation/caution laps relative to safety car (should generally be zero except when safety car crosses s/f line); this can be decremented to implement 'wave around' or 'beneficiary rule' (a.k.a. 'lucky dog' or 'free pass')
         ('mColumnAssignment', ctypes.c_int),                # which column (line/lane) that participant is supposed to be in
         ('mPositionAssignment', ctypes.c_int),                              # 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
-        byte mPitsOpen;                                       # whether the rules allow this particular vehicle to enter pits right now (input is 2=false or 3=true; if you want to edit it, set to 0=false or 1 = true)
+        ('mPitsOpen', ctypes.c_ubyte),                                      # whether the rules allow this particular vehicle to enter pits right now (input is 2=false or 3=true; if you want to edit it, set to 0=false or 1 = true)
         ('mUpToSpeed', ctypes.c_ubyte),                                      # while in the frozen order, this flag indicates whether the vehicle can be followed (this should be false for somebody who has temporarily spun and hasn't gotten back up to speed yet)
         ('mUnused', ctypes.c_ubyte*2),                                       #
         ('mGoalRelativeDistance', ctypes.c_double),                         # calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
-        ('mMessage;                                      # a message for this participant to explain what is going on (untranslated', ctypes.c_ubyte*96), it will get run through translator on client machines)
+        ('mMessage', ctypes.c_ubyte*96),                                     # a message for this participant to explain what is going on it will get run through translator on client machines
         ('mExpansion', ctypes.c_ubyte*192),
     ]
 class rF2TrackRulesStage(Enum):
@@ -443,13 +442,12 @@ class rF2TrackRulesStage(Enum):
 #untranslated CautionInit,                 // initialization of a full-course yellow
 #untranslated CautionUpdate,               // update of a full-course yellow
 #untranslated Maximum                      // should be last
-    ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2TrackRules(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
         ('mCurrentET', ctypes.c_double),                                    # current time
-rF2TrackRulesStage mStage;                            # current stage
+        #('mStage', rF2TrackRulesStage),                            # current stage
         ('mPoleColumn', ctypes.c_int),                      # column assignment where pole position seems to be located
         ('mNumActions', ctypes.c_int),                                      # number of recent actions
         ('pointer1', ctypes.c_ubyte*8),
@@ -537,7 +535,7 @@ class rF2Scoring(ctypes.Structure):
         ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
         ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
         ('mBytesUpdatedHint', ctypes.c_int),                                # How many bytes of the structure were written during the last update.
-rF2ScoringInfo mScoringInfo;
+        ('mScoringInfo', rF2ScoringInfo),
         ('mVehicles', rF2VehicleScoring*rFactor2Constants.MAX_MAPPED_VEHICLES),
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
@@ -579,7 +577,7 @@ class rF2Graphics(ctypes.Structure):
     _fields_ = [
         ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
         ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
-rF2GraphicsInfo mGraphicsInfo;
+        ('mGraphicsInfo', rF2GraphicsInfo),
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2PitInfo(ctypes.Structure):
@@ -587,7 +585,7 @@ class rF2PitInfo(ctypes.Structure):
     _fields_ = [
         ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
         ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
-rF2PitMenu mPitMneu;
+        ('mPitMneu', rF2PitMenu),
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2Weather(ctypes.Structure):
@@ -596,7 +594,7 @@ class rF2Weather(ctypes.Structure):
         ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
         ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
         ('mTrackNodeSize', ctypes.c_double),
-rF2WeatherControlInfo mWeatherInfo;
+        ('mWeatherInfo', rF2WeatherControlInfo),
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, Pack = 4)]
 class rF2TrackedDamage(ctypes.Structure):
