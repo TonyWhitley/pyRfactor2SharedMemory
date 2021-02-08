@@ -159,7 +159,7 @@ class rF2Wheel(ctypes.Structure):
         ('mRideHeight', ctypes.c_double),                                   # meters
         ('mSuspForce', ctypes.c_double),                                    # pushrod load in Newtons
         ('mBrakeTemp', ctypes.c_double),                                    # Celsius
-#!!! double mBrakePressure;                                # currently 0.0-1.0, depending on driver input and brake balance; will convert to true brake pressure (kPa) in future
+        ('mBrakePressure', ctypes.c_double),								# currently 0.0-1.0, depending on driver input and brake balance; will convert to true brake pressure (kPa) in future
         ('mRotation', ctypes.c_double),                                     # radians/sec
         ('mLateralPatchVel', ctypes.c_double),                              # lateral velocity at contact patch
         ('mLongitudinalPatchVel', ctypes.c_double),                         # longitudinal velocity at contact patch
@@ -437,17 +437,17 @@ class rF2TrackRulesParticipant(ctypes.Structure):
     ]
 class rF2TrackRulesStage(Enum):
         FormationInit = 0
-#untranslated FormationUpdate,             // update of the formation lap
-#untranslated Normal,                      // normal (non-yellow) update
-#untranslated CautionInit,                 // initialization of a full-course yellow
-#untranslated CautionUpdate,               // update of a full-course yellow
-#untranslated Maximum                      // should be last
+        FormationUpdate = 1          # update of the formation lap
+        Normal = 2                   # normal (non-yellow) update
+        CautionInit = 3              # initialization of a full-course yellow
+        CautionUpdate = 4            # update of a full-course yellow
+        Maximum = 5                  # should be last
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2TrackRules(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
         ('mCurrentET', ctypes.c_double),                                    # current time
-        #('mStage', rF2TrackRulesStage),                            # current stage
+        ('mStage', rF2TrackRulesStage),                            # current stage
         ('mPoleColumn', ctypes.c_int),                      # column assignment where pole position seems to be located
         ('mNumActions', ctypes.c_int),                                      # number of recent actions
         ('pointer1', ctypes.c_ubyte*8),
@@ -640,9 +640,9 @@ class rF2Extended(ctypes.Structure):
         ('mSessionTransitionCapture', rF2SessionTransitionCapture),# Contains partial internals capture at session transition time.
         ('mDisplayedMessageUpdateCapture', ctypes.c_ubyte*128),
         ('mDirectMemoryAccessEnabled', ctypes.c_ubyte),
-#!!! Int64 mTicksStatusMessageUpdated;                     # Ticks when status message was updated;
+        ('mTicksStatusMessageUpdated', ctypes.c_double),					# Ticks when status message was updated;
         ('mStatusMessage', ctypes.c_ubyte*rFactor2Constants.MAX_STATUS_MSG_LEN),
-#!!! Int64 mTicksLastHistoryMessageUpdated;                # Ticks when last message history message was updated;
+        ('mTicksLastHistoryMessageUpdated', ctypes.c_double),				# Ticks when last message history message was updated;
         ('mLastHistoryMessage', ctypes.c_ubyte*rFactor2Constants.MAX_STATUS_MSG_LEN),
         ('mCurrentPitSpeedLimit', ctypes.c_float),                          # speed limit m/s.
         ('mSCRPluginEnabled', ctypes.c_ubyte),                               # Is Stock Car Rules plugin enabled?
@@ -677,7 +677,7 @@ class rF2WeatherControl(ctypes.Structure):
         ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
         ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
         ('mLayoutVersion', ctypes.c_int),
-#!!! rF2WeatherControlInfo mWeatherInfo;
+        ('mWeatherInfo', rF2WeatherControlInfo),
     ]
 class SubscribedBuffer(Enum):
         Telemetry = 1,
