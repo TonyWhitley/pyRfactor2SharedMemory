@@ -447,7 +447,7 @@ class rF2TrackRules(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
         ('mCurrentET', ctypes.c_double),                                    # current time
-        ('mStage', rF2TrackRulesStage),                            # current stage
+        ('mStage', ctypes.c_int),                            # current stage
         ('mPoleColumn', ctypes.c_int),                      # column assignment where pole position seems to be located
         ('mNumActions', ctypes.c_int),                                      # number of recent actions
         ('pointer1', ctypes.c_ubyte*8),
