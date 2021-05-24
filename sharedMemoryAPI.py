@@ -59,7 +59,7 @@ class SimInfoAPI(rF2data.SimInfo):
             versionPart = 0
             try:
                 versionPart = int(versionParts[i])
-            except BaseException:  # pylint: disable=bare-except
+            except BaseException:
                 msg = "Corrupt or leaked rFactor 2 Shared Memory version.  Version string: " \
                     + versionStr + self.__HELP
                 return msg
@@ -190,6 +190,13 @@ class SimInfoAPI(rF2data.SimInfo):
         """ Get the variable for the player's vehicle """
         self.__playersDriverNum()
         return self.Rf2Scor.mVehicles[self.__playersDriverNum()]
+
+    def vehicleName(self):
+        """
+        Get the vehicle's name
+        """
+        return Cbytestring2Python(
+            self.Rf2Scor.mVehicles[self.__playersDriverNum()].mVehicleName)
 
     def close(self):
         # This didn't help with the errors
