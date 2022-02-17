@@ -103,7 +103,7 @@ class SimInfoAPI(rF2data.SimInfo):
 
     def __playersDriverNum(self):
         """ Find the player's driver number """
-        for _player in range(50):  # self.Rf2Tele.mVehicles[0].mNumVehicles:
+        for _player in range(100):  # self.Rf2Tele.mVehicles[0].mNumVehicles:
             if self.Rf2Scor.mVehicles[_player].mIsPlayer:
                 break
         return _player
