@@ -700,6 +700,8 @@ class SimInfo:
         self.Rf2Scor = rF2Scoring.from_buffer(self._rf2_scor)
         self._rf2_ext = mmap.mmap(0, ctypes.sizeof(rF2Extended), "$rFactor2SMMP_Extended$")
         self.Rf2Ext = rF2Extended.from_buffer(self._rf2_ext)
+        self._rf2_ffb = mmap.mmap(0, ctypes.sizeof(rF2ForceFeedback), "$rFactor2SMMP_ForceFeedback$")
+        self.Rf2Ffb = rF2ForceFeedback.from_buffer(self._rf2_ffb)
 
     def close(self):
       # This didn't help with the errors
@@ -707,6 +709,7 @@ class SimInfo:
         self._rf2_tele.close()
         self._rf2_scor.close()
         self._rf2_ext.close()
+        self._rf2_ffb.close()
       except BufferError: # "cannot close exported pointers exist"
         pass
 
