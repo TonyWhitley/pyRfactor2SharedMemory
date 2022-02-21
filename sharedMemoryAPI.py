@@ -104,7 +104,7 @@ class SimInfoAPI(rF2data.SimInfo):
 
     def __playersDriverNum(self):
         """ Find the player's driver number """
-        if self.Rf2Scor.mVehicles[self.last_found_player_number].mIsPlayer == 1:
+        if self.Rf2Scor.mVehicles[self.last_found_player_number].mIsPlayer:
             _player = self.last_found_player_number
         else:  # only update if player number has changed
             for _player in range(100):  # self.Rf2Tele.mVehicles[0].mNumVehicles:
