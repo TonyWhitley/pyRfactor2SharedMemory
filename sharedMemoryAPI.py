@@ -102,7 +102,7 @@ class SimInfoAPI(rF2data.SimInfo):
                 self.rf2_pid = pid
                 break
 
-    def __playersDriverNum(self):
+    def playersDriverNum(self):
         """ Find the player's driver number """
         if self.Rf2Scor.mVehicles[self.last_found_player_number].mIsPlayer:
             _player = self.last_found_player_number
@@ -173,7 +173,7 @@ class SimInfoAPI(rF2data.SimInfo):
         """
         True: rF2 is running and the player is on track
         """
-        return self.Rf2Scor.mVehicles[self.__playersDriverNum()].mControl == 1
+        return self.Rf2Scor.mVehicles[self.playersDriverNum()].mControl == 1
         # who's in control: -1=nobody (shouldn't get this), 0=local player,
         # 1=local AI, 2=remote, 3=replay (shouldn't get this)
 
@@ -184,24 +184,24 @@ class SimInfoAPI(rF2data.SimInfo):
         Get the player's name
         """
         return Cbytestring2Python(
-            self.Rf2Scor.mVehicles[self.__playersDriverNum()].mDriverName)
+            self.Rf2Scor.mVehicles[self.playersDriverNum()].mDriverName)
 
     def playersVehicleTelemetry(self):
         """ Get the variable for the player's vehicle """
-        self.__playersDriverNum()
-        return self.Rf2Tele.mVehicles[self.__playersDriverNum()]
+        self.playersDriverNum()
+        return self.Rf2Tele.mVehicles[self.playersDriverNum()]
 
     def playersVehicleScoring(self):
         """ Get the variable for the player's vehicle """
-        self.__playersDriverNum()
-        return self.Rf2Scor.mVehicles[self.__playersDriverNum()]
+        self.playersDriverNum()
+        return self.Rf2Scor.mVehicles[self.playersDriverNum()]
 
     def vehicleName(self):
         """
         Get the vehicle's name
         """
         return Cbytestring2Python(
-            self.Rf2Scor.mVehicles[self.__playersDriverNum()].mVehicleName)
+            self.Rf2Scor.mVehicles[self.playersDriverNum()].mVehicleName)
 
     def close(self):
         # This didn't help with the errors
