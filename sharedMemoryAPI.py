@@ -30,7 +30,6 @@ class SimInfoAPI(rF2data.SimInfo):
         rF2data.SimInfo.__init__(self)
         self.versionCheckMsg = self.versionCheck()
         self.__find_rf2_pid()
-        self.last_found_player_number = 0
 
     def versionCheck(self):
         """
@@ -104,13 +103,9 @@ class SimInfoAPI(rF2data.SimInfo):
 
     def playersDriverNum(self):
         """ Find the player's driver number """
-        if self.Rf2Scor.mVehicles[self.last_found_player_number].mIsPlayer:
-            _player = self.last_found_player_number
-        else:  # only update if player number has changed
-            for _player in range(100):  # self.Rf2Tele.mVehicles[0].mNumVehicles:
-                if self.Rf2Scor.mVehicles[_player].mIsPlayer:
-                    self.last_found_player_number = _player
-                    break
+        for _player in range(100):  # self.Rf2Tele.mVehicles[0].mNumVehicles:
+            if self.Rf2Scor.mVehicles[_player].mIsPlayer:
+                break
         return _player
 
     ###########################################################
@@ -188,12 +183,12 @@ class SimInfoAPI(rF2data.SimInfo):
 
     def playersVehicleTelemetry(self):
         """ Get the variable for the player's vehicle """
-        self.playersDriverNum()
+        #self.playersDriverNum()
         return self.Rf2Tele.mVehicles[self.playersDriverNum()]
 
     def playersVehicleScoring(self):
         """ Get the variable for the player's vehicle """
-        self.playersDriverNum()
+        #self.playersDriverNum()
         return self.Rf2Scor.mVehicles[self.playersDriverNum()]
 
     def vehicleName(self):
