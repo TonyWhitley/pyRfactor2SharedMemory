@@ -3,7 +3,8 @@ Inherit Python mapping of The Iron Wolf's rF2 Shared Memory Tools
 and add access functions to it.
 """
 # pylint: disable=invalid-name
-
+import time
+import threading
 import psutil
 
 try:
@@ -30,6 +31,7 @@ class SimInfoAPI(rF2data.SimInfo):
         rF2data.SimInfo.__init__(self)
         self.versionCheckMsg = self.versionCheck()
         self.__find_rf2_pid()
+        self.players_index = 99
 
     def versionCheck(self):
         """
@@ -101,7 +103,25 @@ class SimInfoAPI(rF2data.SimInfo):
                 self.rf2_pid = pid
                 break
 
-    def playersDriverNum(self):
+    def __playerIndexUpdate(self):
+        """ Find & update index number """
+        while True:
+            for index in range(100):
+                if self.Rf2Scor.mVehicles[index].mIsPlayer:
+                    self.players_index = index
+                    break
+            time.sleep(0.01)
+
+    def startUpdating(self):
+        """ Start player index update thread """
+        index_thread = threading.Thread(target=self.__playerIndexUpdate)
+        index_thread.setDaemon(True)
+        index_thread.start()
+
+    ###########################################################
+    # This function is no longer needed
+
+    def __playersDriverNum(self):
         """ Find the player's driver number """
         for _player in range(100):  # self.Rf2Tele.mVehicles[0].mNumVehicles:
             if self.Rf2Scor.mVehicles[_player].mIsPlayer:
@@ -168,7 +188,7 @@ class SimInfoAPI(rF2data.SimInfo):
         """
         True: rF2 is running and the player is on track
         """
-        return self.Rf2Scor.mVehicles[self.playersDriverNum()].mControl == 1
+        return self.Rf2Scor.mVehicles[self.players_index].mControl == 1
         # who's in control: -1=nobody (shouldn't get this), 0=local player,
         # 1=local AI, 2=remote, 3=replay (shouldn't get this)
 
@@ -179,24 +199,24 @@ class SimInfoAPI(rF2data.SimInfo):
         Get the player's name
         """
         return Cbytestring2Python(
-            self.Rf2Scor.mVehicles[self.playersDriverNum()].mDriverName)
+            self.Rf2Scor.mVehicles[self.players_index].mDriverName)
 
     def playersVehicleTelemetry(self):
         """ Get the variable for the player's vehicle """
-        #self.playersDriverNum()
-        return self.Rf2Tele.mVehicles[self.playersDriverNum()]
+        #self.players_index
+        return self.Rf2Tele.mVehicles[self.players_index]
 
     def playersVehicleScoring(self):
         """ Get the variable for the player's vehicle """
-        #self.playersDriverNum()
-        return self.Rf2Scor.mVehicles[self.playersDriverNum()]
+        #self.players_index
+        return self.Rf2Scor.mVehicles[self.players_index]
 
     def vehicleName(self):
         """
         Get the vehicle's name
         """
         return Cbytestring2Python(
-            self.Rf2Scor.mVehicles[self.playersDriverNum()].mVehicleName)
+            self.Rf2Scor.mVehicles[self.players_index].mVehicleName)
 
     def close(self):
         # This didn't help with the errors
