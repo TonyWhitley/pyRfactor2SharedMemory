@@ -106,10 +106,11 @@ class SimInfoAPI(rF2data.SimInfo):
     def __playerIndexUpdate(self):
         """ Find & update index number """
         while True:
-            for index in range(100):
-                if self.Rf2Scor.mVehicles[index].mIsPlayer:
-                    self.players_index = index
-                    break
+            if self.Rf2Ext.mInRealtimeFC:
+                for index in range(100):
+                    if self.Rf2Scor.mVehicles[index].mIsPlayer:
+                        self.players_index = index
+                        break
             time.sleep(0.01)
 
     def startUpdating(self):
