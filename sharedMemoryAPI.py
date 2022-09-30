@@ -5,6 +5,7 @@ and add access functions to it.
 # pylint: disable=invalid-name
 import time
 import threading
+import math
 import psutil
 
 try:
@@ -103,12 +104,21 @@ class SimInfoAPI(rF2data.SimInfo):
                 self.rf2_pid = pid
                 break
 
+    def in2zero(self, value1):
+        """Convert none & inf & nan to zero"""
+        if type(value1) == int or type(value1) == float:
+            if math.isnan(value1) or math.isinf(value1):  # bypass nan & inf
+                value1 = 0
+        else:
+            value1 = 0
+        return value1
+
     def __playerIndexUpdate(self):
         """ Find & update index number """
         while True:
             #if self.Rf2Ext.mInRealtimeFC:
             for _index in range(100):
-                if self.Rf2Scor.mVehicles[_index].mIsPlayer:
+                if self.in2zero(self.Rf2Scor.mVehicles[_index].mIsPlayer):
                     self.players_index = _index
                     break
             time.sleep(0.01)
