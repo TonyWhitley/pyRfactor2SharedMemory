@@ -691,14 +691,14 @@ class SubscribedBuffer(Enum):
         All = 255
 
 class SimInfo:
-    def __init__(self):
+    def __init__(self, input_pid):
 
 
-        self._rf2_tele = mmap.mmap(0, ctypes.sizeof(rF2Telemetry), "$rFactor2SMMP_Telemetry$")
+        self._rf2_tele = mmap.mmap(0, ctypes.sizeof(rF2Telemetry), f"$rFactor2SMMP_Telemetry${input_pid}")
         self.Rf2Tele = rF2Telemetry.from_buffer(self._rf2_tele)
-        self._rf2_scor = mmap.mmap(0, ctypes.sizeof(rF2Scoring), "$rFactor2SMMP_Scoring$")
+        self._rf2_scor = mmap.mmap(0, ctypes.sizeof(rF2Scoring), f"$rFactor2SMMP_Scoring${input_pid}")
         self.Rf2Scor = rF2Scoring.from_buffer(self._rf2_scor)
-        self._rf2_ext = mmap.mmap(0, ctypes.sizeof(rF2Extended), "$rFactor2SMMP_Extended$")
+        self._rf2_ext = mmap.mmap(0, ctypes.sizeof(rF2Extended), f"$rFactor2SMMP_Extended${input_pid}")
         self.Rf2Ext = rF2Extended.from_buffer(self._rf2_ext)
         self._rf2_ffb = mmap.mmap(0, ctypes.sizeof(rF2ForceFeedback), "$rFactor2SMMP_ForceFeedback$")
         self.Rf2Ffb = rF2ForceFeedback.from_buffer(self._rf2_ffb)

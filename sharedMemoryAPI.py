@@ -28,8 +28,8 @@ class SimInfoAPI(rF2data.SimInfo):
     rf2_pid_counter = 0     # Counter to check if running
     rf2_running = False
 
-    def __init__(self):
-        rF2data.SimInfo.__init__(self)
+    def __init__(self, input_pid):
+        rF2data.SimInfo.__init__(self, input_pid)
         self.versionCheckMsg = self.versionCheck()
         self.__find_rf2_pid()
         self.players_index = 99
