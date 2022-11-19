@@ -33,6 +33,10 @@ class SimInfoAPI(rF2data.SimInfo):
         self.versionCheckMsg = self.versionCheck()
         self.__find_rf2_pid()
         self.players_index = 99
+        self.idx_checking = False
+        self.total_vehicles = 1
+        self.timer = 0
+        print("sharedmemory mapping started")
 
     def versionCheck(self):
         """
@@ -104,40 +108,35 @@ class SimInfoAPI(rF2data.SimInfo):
                 self.rf2_pid = pid
                 break
 
-    def in2zero(self, value1):
-        """Convert none & inf & nan to zero"""
-        if type(value1) == int or type(value1) == float:
-            if math.isnan(value1) or math.isinf(value1):  # bypass nan & inf
-                value1 = 0
-        else:
-            value1 = 0
-        return value1
+    def playerIndexCheck(self):
+        """ Check player index number (max 128 players) """
+        for _player in range(127):
+            if self.Rf2Scor.mVehicles[_player].mIsPlayer == 1:
+                break
+        return _player
 
     def __playerIndexUpdate(self):
-        """ Find & update index number """
+        """ Update index number """
         while True:
-            #if self.Rf2Ext.mInRealtimeFC:
-            for _index in range(100):
-                if self.in2zero(self.Rf2Scor.mVehicles[_index].mIsPlayer):
-                    self.players_index = _index
-                    break
+            if not self.idx_checking:
+                print("player index updating closed")
+                break
+
+            self.timer += 0.01
+            if self.timer > 0.3:
+                self.total_vehicles = self.Rf2Tele.mNumVehicles
+                self.timer = 0
+
+            self.players_index = self.playerIndexCheck()
             time.sleep(0.01)
 
     def startUpdating(self):
         """ Start player index update thread """
+        self.idx_checking = True
         index_thread = threading.Thread(target=self.__playerIndexUpdate)
         index_thread.setDaemon(True)
         index_thread.start()
-
-    ###########################################################
-    # This function is no longer needed
-
-    def __playersDriverNum(self):
-        """ Find the player's driver number """
-        for _player in range(100):  # self.Rf2Tele.mVehicles[0].mNumVehicles:
-            if self.Rf2Scor.mVehicles[_player].mIsPlayer:
-                break
-        return _player
+        print("player index updating started")
 
     ###########################################################
     # Access functions
@@ -228,12 +227,24 @@ class SimInfoAPI(rF2data.SimInfo):
             self.Rf2Scor.mVehicles[self.players_index].mVehicleName)
 
     def close(self):
+        # Stop index checking thread
+        self.idx_checking = False
+        time.sleep(0.2)
         # This didn't help with the errors
         try:
+            # Delete those objects first
+            del self.Rf2Tele
+            del self.Rf2Scor
+            del self.Rf2Ext
+            del self.Rf2Ffb
+            # Close shared memory mapping
             self._rf2_tele.close()
             self._rf2_scor.close()
             self._rf2_ext.close()
+            self._rf2_ffb.close()
+            print("sharedmemory mapping closed")
         except BufferError:  # "cannot close exported pointers exist"
+            print("BufferError")
             pass
 
     def __del__(self):
