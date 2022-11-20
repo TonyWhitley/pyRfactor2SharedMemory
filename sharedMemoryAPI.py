@@ -6,6 +6,7 @@ and add access functions to it.
 import time
 import threading
 import math
+import copy
 import psutil
 
 try:
@@ -33,9 +34,9 @@ class SimInfoAPI(rF2data.SimInfo):
         self.versionCheckMsg = self.versionCheck()
         self.__find_rf2_pid()
         self.players_index = 99
-        self.idx_checking = False
-        self.total_vehicles = 1
-        self.timer = 0
+        self.LastTele = copy.deepcopy(self.Rf2Tele)
+        self.LastScor = copy.deepcopy(self.Rf2Scor)
+        self.data_updating = False
         print("sharedmemory mapping started")
 
     def versionCheck(self):
@@ -108,35 +109,44 @@ class SimInfoAPI(rF2data.SimInfo):
                 self.rf2_pid = pid
                 break
 
-    def playerIndexCheck(self):
+    @staticmethod
+    def playerIndexCheck(value):
         """ Check player index number (max 128 players) """
         for _player in range(127):
-            if self.Rf2Scor.mVehicles[_player].mIsPlayer == 1:
+            if value.mVehicles[_player].mIsPlayer == 1:
                 break
         return _player
 
-    def __playerIndexUpdate(self):
+    @staticmethod
+    def data_verified(value):
+        """ Verify data """
+        return value.mVersionUpdateEnd == value.mVersionUpdateBegin
+
+    def __infoUpdate(self):
         """ Update index number """
-        while True:
-            if not self.idx_checking:
-                print("player index updating closed")
-                break
+        while self.data_updating:
+            data_scor = copy.deepcopy(self.Rf2Scor)
+            if self.data_verified(data_scor):
+                self.players_index = self.playerIndexCheck(data_scor)
+                players_mid = data_scor.mVehicles[self.players_index].mID
+                self.LastScor = data_scor
 
-            self.timer += 0.01
-            if self.timer > 0.3:
-                self.total_vehicles = self.Rf2Tele.mNumVehicles
-                self.timer = 0
+            data_tele = copy.deepcopy(self.Rf2Tele)
+            if self.data_verified(data_tele):
+                if data_tele.mVehicles[self.players_index].mID == players_mid:
+                    self.LastTele = data_tele
 
-            self.players_index = self.playerIndexCheck()
             time.sleep(0.01)
+        else:
+            print("sharedmemory updating stopped")
 
     def startUpdating(self):
         """ Start player index update thread """
-        self.idx_checking = True
-        index_thread = threading.Thread(target=self.__playerIndexUpdate)
+        self.data_updating = True
+        index_thread = threading.Thread(target=self.__infoUpdate)
         index_thread.setDaemon(True)
         index_thread.start()
-        print("player index updating started")
+        print("sharedmemory updating started")
 
     ###########################################################
     # Access functions
@@ -213,11 +223,11 @@ class SimInfoAPI(rF2data.SimInfo):
 
     def playersVehicleTelemetry(self):
         """ Get the variable for the player's vehicle """
-        return self.Rf2Tele.mVehicles[self.players_index]
+        return self.LastTele.mVehicles[self.players_index]
 
     def playersVehicleScoring(self):
         """ Get the variable for the player's vehicle """
-        return self.Rf2Scor.mVehicles[self.players_index]
+        return self.LastScor.mVehicles[self.players_index]
 
     def vehicleName(self):
         """
@@ -226,17 +236,19 @@ class SimInfoAPI(rF2data.SimInfo):
         return Cbytestring2Python(
             self.Rf2Scor.mVehicles[self.players_index].mVehicleName)
 
-    def close(self):
+    def closeSimInfo(self):
         # Stop index checking thread
-        self.idx_checking = False
+        self.data_updating = False
         time.sleep(0.2)
         # This didn't help with the errors
         try:
-            # Delete those objects first
-            del self.Rf2Tele
-            del self.Rf2Scor
-            del self.Rf2Ext
-            del self.Rf2Ffb
+            # Unassign those objects first
+            self._last_vehicle_telemetry = None
+            self._last_vehicle_scoring = None
+            self.Rf2Tele = None
+            self.Rf2Scor = None
+            self.Rf2Ext = None
+            self.Rf2Ffb = None
             # Close shared memory mapping
             self._rf2_tele.close()
             self._rf2_scor.close()
