@@ -34,6 +34,7 @@ class SimInfoAPI(rF2data.SimInfo):
         self.versionCheckMsg = self.versionCheck()
         self.__find_rf2_pid()
         self.players_index = 99
+        self.players_mid = 0
         self.LastTele = copy.deepcopy(self.Rf2Tele)
         self.LastScor = copy.deepcopy(self.Rf2Scor)
         self.data_updating = False
@@ -128,12 +129,12 @@ class SimInfoAPI(rF2data.SimInfo):
             data_scor = copy.deepcopy(self.Rf2Scor)
             if self.data_verified(data_scor):
                 self.players_index = self.playerIndexCheck(data_scor)
-                players_mid = data_scor.mVehicles[self.players_index].mID
+                self.players_mid = data_scor.mVehicles[self.players_index].mID
                 self.LastScor = data_scor
 
             data_tele = copy.deepcopy(self.Rf2Tele)
             if self.data_verified(data_tele):
-                if data_tele.mVehicles[self.players_index].mID == players_mid:
+                if data_tele.mVehicles[self.players_index].mID == self.players_mid:
                     self.LastTele = data_tele
 
             time.sleep(0.01)
