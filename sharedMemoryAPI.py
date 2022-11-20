@@ -244,8 +244,6 @@ class SimInfoAPI(rF2data.SimInfo):
         # This didn't help with the errors
         try:
             # Unassign those objects first
-            self._last_vehicle_telemetry = None
-            self._last_vehicle_scoring = None
             self.Rf2Tele = None
             self.Rf2Scor = None
             self.Rf2Ext = None
