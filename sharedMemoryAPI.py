@@ -124,7 +124,7 @@ class SimInfoAPI(rF2data.SimInfo):
         return value.mVersionUpdateEnd == value.mVersionUpdateBegin
 
     def __infoUpdate(self):
-        """ Update index number """
+        """ Update shared memory data """
         while self.data_updating:
             data_scor = copy.deepcopy(self.Rf2Scor)
             if self.data_verified(data_scor):
@@ -142,7 +142,7 @@ class SimInfoAPI(rF2data.SimInfo):
             print("sharedmemory updating stopped")
 
     def startUpdating(self):
-        """ Start player index update thread """
+        """ Start data updating thread """
         self.data_updating = True
         index_thread = threading.Thread(target=self.__infoUpdate)
         index_thread.setDaemon(True)
@@ -238,7 +238,7 @@ class SimInfoAPI(rF2data.SimInfo):
             self.Rf2Scor.mVehicles[self.players_index].mVehicleName)
 
     def closeSimInfo(self):
-        # Stop index checking thread
+        # Stop data updating thread
         self.data_updating = False
         time.sleep(0.2)
         # This didn't help with the errors
