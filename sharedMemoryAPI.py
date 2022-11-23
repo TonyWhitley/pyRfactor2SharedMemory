@@ -5,7 +5,6 @@ and add access functions to it.
 # pylint: disable=invalid-name
 import time
 import threading
-import math
 import copy
 import psutil
 
@@ -111,31 +110,32 @@ class SimInfoAPI(rF2data.SimInfo):
                 break
 
     @staticmethod
-    def playerIndexCheck(value):
-        """ Check player index number (max 128 players) """
-        for _player in range(127):
-            if value.mVehicles[_player].mIsPlayer == 1:
+    def playerIndexCheck(input_data):
+        """ Check player index number on one same data piece """
+        for _player in range(127):  # max 128 players supported by API
+            if input_data.mVehicles[_player].mIsPlayer == 1:  # use 1 to avoid chance of reading inf or NaN
                 break
         return _player
 
     @staticmethod
-    def data_verified(value):
+    def data_verified(input_data):
         """ Verify data """
-        return value.mVersionUpdateEnd == value.mVersionUpdateBegin
+        return input_data.mVersionUpdateEnd == input_data.mVersionUpdateBegin
 
     def __infoUpdate(self):
         """ Update shared memory data """
         while self.data_updating:
-            data_scor = copy.deepcopy(self.Rf2Scor)
+            data_scor = copy.deepcopy(self.Rf2Scor)  # use deepcopy to avoid data interruption
             if self.data_verified(data_scor):
-                self.players_index = self.playerIndexCheck(data_scor)
-                self.players_mid = data_scor.mVehicles[self.players_index].mID
-                self.LastScor = data_scor
+                self.players_index = self.playerIndexCheck(data_scor)  # update player index
+                self.players_mid = data_scor.mVehicles[self.players_index].mID  # update player mID
+                self.LastScor = data_scor  # update scoring data
 
             data_tele = copy.deepcopy(self.Rf2Tele)
             if self.data_verified(data_tele):
+                # Compare player mID & sync data
                 if data_tele.mVehicles[self.players_index].mID == self.players_mid:
-                    self.LastTele = data_tele
+                    self.LastTele = data_tele  # update synced telemetry data
 
             time.sleep(0.01)
         else:
