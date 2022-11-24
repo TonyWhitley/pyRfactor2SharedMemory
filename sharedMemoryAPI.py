@@ -33,7 +33,7 @@ class SimInfoAPI(rF2data.SimInfo):
         self.versionCheckMsg = self.versionCheck()
         self.__find_rf2_pid()
         self.players_index = 99
-        self.players_mid = 0
+        self.players_status = 0
         self.LastTele = copy.deepcopy(self.Rf2Tele)
         self.LastScor = copy.deepcopy(self.Rf2Scor)
         self.data_updating = False
@@ -109,37 +109,53 @@ class SimInfoAPI(rF2data.SimInfo):
                 self.rf2_pid = pid
                 break
 
-    @staticmethod
-    def playerIndexCheck(input_data):
-        """ Check player index number on one same data piece """
-        for _player in range(127):  # max 128 players supported by API
-            if input_data.mVehicles[_player].mIsPlayer == 1:  # use 1 to avoid chance of reading inf or NaN
+    def __playersDriverNum(self):
+        """ Find the player's driver number """
+        index_list = copy.deepcopy(self.Rf2Scor.mVehicles)
+        for _player in range(127):
+            if index_list[_player].mIsPlayer == 1:
                 break
         return _player
 
+    ###########################################################
+    # Sync data for local player
+
+    def __playerVerified(self, input_data):
+        """ Check player index number on one same data piece """
+        found = False  # return false if failed to find player index
+        for _player in range(127):  # max 128 players supported by API
+            if input_data.mVehicles[_player].mIsPlayer == 1:  # use 1 to avoid reading incorrect value
+                self.players_index = _player
+                found = True
+                break
+        return found
+
     @staticmethod
-    def data_verified(input_data):
+    def dataVerified(input_data):
         """ Verify data """
         return input_data.mVersionUpdateEnd == input_data.mVersionUpdateBegin
 
     def __infoUpdate(self):
-        """ Update shared memory data """
+        """ Update synced player data """
+        players_mid = 0
+
         while self.data_updating:
             data_scor = copy.deepcopy(self.Rf2Scor)  # use deepcopy to avoid data interruption
-            if self.data_verified(data_scor):
-                self.players_index = self.playerIndexCheck(data_scor)  # update player index
-                self.players_mid = data_scor.mVehicles[self.players_index].mID  # update player mID
-                self.LastScor = data_scor  # update scoring data
-
             data_tele = copy.deepcopy(self.Rf2Tele)
-            if self.data_verified(data_tele):
-                # Compare player mID & sync data
-                if data_tele.mVehicles[self.players_index].mID == self.players_mid:
-                    self.LastTele = data_tele  # update synced telemetry data
+
+            # Only update if data verified and player index found
+            if self.dataVerified(data_scor) and self.__playerVerified(data_scor):
+                self.LastScor = copy.deepcopy(data_scor)  # use deepcopy to update scoring data
+                players_mid = self.LastScor.mVehicles[self.players_index].mID  # update player mID
+
+                # Only update if data verified and player mID matches
+                if self.dataVerified(data_tele) and data_tele.mVehicles[self.players_index].mID == players_mid:
+                    self.LastTele = copy.deepcopy(data_tele)  # use deepcopy to update synced telemetry data
+                    self.players_status = self.LastTele.mVehicles[self.players_index].mIgnitionStarter  # update player status
 
             time.sleep(0.01)
         else:
-            print("sharedmemory updating stopped")
+            print("sharedmemory synced player data updating thread stopped")
 
     def startUpdating(self):
         """ Start data updating thread """
@@ -147,7 +163,20 @@ class SimInfoAPI(rF2data.SimInfo):
         index_thread = threading.Thread(target=self.__infoUpdate)
         index_thread.setDaemon(True)
         index_thread.start()
-        print("sharedmemory updating started")
+        print("sharedmemory synced player data updating thread started")
+
+    def stopUpdating(self):
+        """ Stop data updating thread """
+        self.data_updating = False
+        time.sleep(0.2)
+
+    def syncedVehicleTelemetry(self):
+        """ Get the variable for the player's vehicle """
+        return self.LastTele.mVehicles[self.players_index]
+
+    def syncedVehicleScoring(self):
+        """ Get the variable for the player's vehicle """
+        return self.LastScor.mVehicles[self.players_index]
 
     ###########################################################
     # Access functions
@@ -209,7 +238,7 @@ class SimInfoAPI(rF2data.SimInfo):
         """
         True: rF2 is running and the player is on track
         """
-        return self.Rf2Scor.mVehicles[self.players_index].mControl == 1
+        return self.Rf2Scor.mVehicles[self.__playersDriverNum()].mControl == 1
         # who's in control: -1=nobody (shouldn't get this), 0=local player,
         # 1=local AI, 2=remote, 3=replay (shouldn't get this)
 
@@ -220,27 +249,24 @@ class SimInfoAPI(rF2data.SimInfo):
         Get the player's name
         """
         return Cbytestring2Python(
-            self.Rf2Scor.mVehicles[self.players_index].mDriverName)
+            self.Rf2Scor.mVehicles[self.__playersDriverNum()].mDriverName)
 
     def playersVehicleTelemetry(self):
         """ Get the variable for the player's vehicle """
-        return self.LastTele.mVehicles[self.players_index]
+        return self.Rf2Tele.mVehicles[self.__playersDriverNum()]
 
     def playersVehicleScoring(self):
         """ Get the variable for the player's vehicle """
-        return self.LastScor.mVehicles[self.players_index]
+        return self.Rf2Scor.mVehicles[self.__playersDriverNum()]
 
     def vehicleName(self):
         """
         Get the vehicle's name
         """
         return Cbytestring2Python(
-            self.Rf2Scor.mVehicles[self.players_index].mVehicleName)
+            self.Rf2Scor.mVehicles[self.__playersDriverNum()].mVehicleName)
 
     def closeSimInfo(self):
-        # Stop data updating thread
-        self.data_updating = False
-        time.sleep(0.2)
         # This didn't help with the errors
         try:
             # Unassign those objects first
