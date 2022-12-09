@@ -28,14 +28,12 @@ class SimInfoAPI(rF2data.SimInfo):
     rf2_pid_counter = 0     # Counter to check if running
     rf2_running = False
 
-    def __init__(self, input_pid):
+    def __init__(self, input_pid=""):
         rF2data.SimInfo.__init__(self, input_pid)
         self.versionCheckMsg = self.versionCheck()
         self.__find_rf2_pid()
+
         self.players_index = 99
-        self.players_status = 0
-        self.LastTele = copy.deepcopy(self.Rf2Tele)
-        self.LastScor = copy.deepcopy(self.Rf2Scor)
         self.data_updating = False
         print("sharedmemory mapping started")
 
@@ -137,11 +135,18 @@ class SimInfoAPI(rF2data.SimInfo):
 
     def __infoUpdate(self):
         """ Update synced player data """
-        players_mid = 0
+        players_mid = 0          # player mID
+        last_version_update = 0  # store last data version update
+        re_version_update = 0    # store restarted data version update
+        mmap_restarted = True    # whether has restarted memory mapping
+        check_counter = 0        # counter for data version update check
+        restore_counter = 0      # counter for restoring mmap data to default
 
         while self.data_updating:
             data_scor = copy.deepcopy(self.Rf2Scor)  # use deepcopy to avoid data interruption
             data_tele = copy.deepcopy(self.Rf2Tele)
+            self.LastExt = copy.deepcopy(self.Rf2Ext)
+            self.LastFfb = copy.deepcopy(self.Rf2Ffb)
 
             # Only update if data verified and player index found
             if self.dataVerified(data_scor) and self.__playerVerified(data_scor):
@@ -151,7 +156,31 @@ class SimInfoAPI(rF2data.SimInfo):
                 # Only update if data verified and player mID matches
                 if self.dataVerified(data_tele) and data_tele.mVehicles[self.players_index].mID == players_mid:
                     self.LastTele = copy.deepcopy(data_tele)  # use deepcopy to update synced telemetry data
-                    self.players_status = self.LastTele.mVehicles[self.players_index].mIgnitionStarter  # update player status
+
+            # Start checking data version update status
+            check_counter += 1
+
+            if check_counter > 70:  # active after around 1 seconds
+                if not mmap_restarted and last_version_update > 0 and last_version_update == self.LastScor.mVersionUpdateEnd:
+                    self.reset_mmap()
+                    mmap_restarted = True
+                    re_version_update = self.LastScor.mVersionUpdateEnd
+                    print(f"sharedmemory mapping restarted - version:{last_version_update}")
+                last_version_update = self.LastScor.mVersionUpdateEnd
+                check_counter = 0  # reset counter
+
+            if mmap_restarted:
+                if re_version_update != self.LastScor.mVersionUpdateEnd:
+                    mmap_restarted = False
+                    restore_counter = 0  # reset counter
+                elif restore_counter < 71:
+                    restore_counter += 1
+
+            if restore_counter == 70:  # active after around 1 seconds
+                self.set_default_mmap()
+                print("sharedmemory mapping data reset to default")
+
+            #print(f"c1:{check_counter:03.0f} c2:{restore_counter:03.0f} now:{self.LastScor.mVersionUpdateEnd:07.0f} last:{last_version_update:07.0f} re:{re_version_update:07.0f} {mmap_restarted}", end="\r")
 
             time.sleep(0.01)
         else:
@@ -245,9 +274,7 @@ class SimInfoAPI(rF2data.SimInfo):
         # didn't work self.Rf2Ext.mPhysics.mAIControl
 
     def driverName(self):
-        """
-        Get the player's name
-        """
+        """ Get the player's name """
         return Cbytestring2Python(
             self.Rf2Scor.mVehicles[self.__playersDriverNum()].mDriverName)
 
@@ -260,32 +287,9 @@ class SimInfoAPI(rF2data.SimInfo):
         return self.Rf2Scor.mVehicles[self.__playersDriverNum()]
 
     def vehicleName(self):
-        """
-        Get the vehicle's name
-        """
+        """ Get the vehicle's name """
         return Cbytestring2Python(
             self.Rf2Scor.mVehicles[self.__playersDriverNum()].mVehicleName)
-
-    def closeSimInfo(self):
-        # This didn't help with the errors
-        try:
-            # Unassign those objects first
-            self.Rf2Tele = None
-            self.Rf2Scor = None
-            self.Rf2Ext = None
-            self.Rf2Ffb = None
-            # Close shared memory mapping
-            self._rf2_tele.close()
-            self._rf2_scor.close()
-            self._rf2_ext.close()
-            self._rf2_ffb.close()
-            print("sharedmemory mapping closed")
-        except BufferError:  # "cannot close exported pointers exist"
-            print("BufferError")
-            pass
-
-    def __del__(self):
-        self.close()
 
 
 def Cbytestring2Python(bytestring):
