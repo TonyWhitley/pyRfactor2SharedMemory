@@ -8,6 +8,7 @@ from enum import Enum
 import ctypes
 import mmap
 import copy
+import platform
 
 class rFactor2Constants:
   MAX_MAPPED_VEHICLES = 128
@@ -720,10 +721,20 @@ class SimInfo:
 
     def start_mmap(self):
         """ Start memory mapping """
-        self._rf2_tele = mmap.mmap(0, ctypes.sizeof(rF2Telemetry), f"$rFactor2SMMP_Telemetry${self._input_pid}")
-        self._rf2_scor = mmap.mmap(0, ctypes.sizeof(rF2Scoring), f"$rFactor2SMMP_Scoring${self._input_pid}")
-        self._rf2_ext = mmap.mmap(0, ctypes.sizeof(rF2Extended), f"$rFactor2SMMP_Extended${self._input_pid}")
-        self._rf2_ffb = mmap.mmap(0, ctypes.sizeof(rF2ForceFeedback), "$rFactor2SMMP_ForceFeedback$")
+        if platform.system() == "Windows":
+            self._rf2_tele = mmap.mmap(0, ctypes.sizeof(rF2Telemetry), f"$rFactor2SMMP_Telemetry${self._input_pid}")
+            self._rf2_scor = mmap.mmap(0, ctypes.sizeof(rF2Scoring), f"$rFactor2SMMP_Scoring${self._input_pid}")
+            self._rf2_ext = mmap.mmap(0, ctypes.sizeof(rF2Extended), f"$rFactor2SMMP_Extended${self._input_pid}")
+            self._rf2_ffb = mmap.mmap(0, ctypes.sizeof(rF2ForceFeedback), "$rFactor2SMMP_ForceFeedback$")
+        else:
+            tele_file = open("/dev/shm/$rFactor2SMMP_Telemetry$", "r+")
+            self._rf2_tele = mmap.mmap(tele_file.fileno(), ctypes.sizeof(rF2Telemetry))
+            scor_file = open("/dev/shm/$rFactor2SMMP_Scoring$", "r+")
+            self._rf2_scor = mmap.mmap(scor_file.fileno(), ctypes.sizeof(rF2Scoring))
+            ext_file = open("/dev/shm/$rFactor2SMMP_Extended$", "r+")
+            self._rf2_ext = mmap.mmap(ext_file.fileno(), ctypes.sizeof(rF2Extended))
+            ffb_file = open("/dev/shm/$rFactor2SMMP_ForceFeedback$", "r+")
+            self._rf2_ffb = mmap.mmap(ffb_file.fileno(), ctypes.sizeof(rF2ForceFeedback))
 
         self.Rf2Tele = rF2Telemetry.from_buffer(self._rf2_tele)
         self.Rf2Scor = rF2Scoring.from_buffer(self._rf2_scor)
