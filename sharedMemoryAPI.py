@@ -140,7 +140,7 @@ class SimInfoAPI(rF2data.SimInfo):
         re_version_update = 0    # store restarted data version update
         mmap_restarted = True    # whether has restarted memory mapping
         check_counter = 0        # counter for data version update check
-        restore_counter = 0      # counter for restoring mmap data to default
+        restore_counter = 71      # counter for restoring mmap data to default
 
         while self.data_updating:
             data_scor = copy.deepcopy(self.Rf2Scor)  # use deepcopy to avoid data interruption
