@@ -28,8 +28,6 @@ class SimInfoSync():
     def __init__(self, input_pid=""):
         self.players_index = 99
         self.data_updating = False
-        print("sharedmemory mapping started")
-
         self._input_pid = input_pid
 
         self._rf2_tele = None  # map shared memory
@@ -54,6 +52,7 @@ class SimInfoSync():
 
         self.start_mmap()
         self.set_default_mmap()
+        print("sharedmemory mapping started")
 
     def start_mmap(self):
         """ Start memory mapping """
@@ -122,14 +121,12 @@ class SimInfoSync():
 
     def __playerVerified(self, input_data):
         """ Check player index number on one same data piece """
-        found = False  # return false if failed to find player index
-        for _player in range(127):  # max 128 players supported by API
+        for _player in range(128):  # max 128 players supported by API
             # Use 1 to avoid reading incorrect value
             if input_data.mVehicles[_player].mIsPlayer == 1:
                 self.players_index = _player
-                found = True
-                break
-        return found
+                return True
+        return False  # return false if failed to find player index
 
     @staticmethod
     def dataVerified(input_data):
