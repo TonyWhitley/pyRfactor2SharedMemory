@@ -7,8 +7,6 @@ Auto-generated from rF2data.cs
 from enum import Enum
 import ctypes
 import mmap
-import copy
-import platform
 
 class rFactor2Constants:
   MAX_MAPPED_VEHICLES = 128
@@ -693,89 +691,24 @@ class SubscribedBuffer(Enum):
         All = 255
 
 class SimInfo:
-    def __init__(self, input_pid):
-        self._input_pid = input_pid
+    def __init__(self):
 
-        self._rf2_tele = None  # map shared memory
-        self._rf2_scor = None
-        self._rf2_ext = None
-        self._rf2_ffb = None
 
-        self.Rf2Tele = None  # raw data
-        self.Rf2Scor = None
-        self.Rf2Ext = None
-        self.Rf2Ffb = None
-
-        self.DefTele = None  # default copy of raw data
-        self.DefScor = None
-        self.DefExt = None
-        self.DefFfb = None
-
-        self.LastTele = None  # synced copy of raw data
-        self.LastScor = None
-        self.LastExt = None
-        self.LastFfb = None
-
-        self.start_mmap()
-        self.set_default_mmap()
-
-    def start_mmap(self):
-        """ Start memory mapping """
-        if platform.system() == "Windows":
-            self._rf2_tele = mmap.mmap(0, ctypes.sizeof(rF2Telemetry), f"$rFactor2SMMP_Telemetry${self._input_pid}")
-            self._rf2_scor = mmap.mmap(0, ctypes.sizeof(rF2Scoring), f"$rFactor2SMMP_Scoring${self._input_pid}")
-            self._rf2_ext = mmap.mmap(0, ctypes.sizeof(rF2Extended), f"$rFactor2SMMP_Extended${self._input_pid}")
-            self._rf2_ffb = mmap.mmap(0, ctypes.sizeof(rF2ForceFeedback), "$rFactor2SMMP_ForceFeedback$")
-        else:
-            tele_file = open("/dev/shm/$rFactor2SMMP_Telemetry$", "r+")
-            self._rf2_tele = mmap.mmap(tele_file.fileno(), ctypes.sizeof(rF2Telemetry))
-            scor_file = open("/dev/shm/$rFactor2SMMP_Scoring$", "r+")
-            self._rf2_scor = mmap.mmap(scor_file.fileno(), ctypes.sizeof(rF2Scoring))
-            ext_file = open("/dev/shm/$rFactor2SMMP_Extended$", "r+")
-            self._rf2_ext = mmap.mmap(ext_file.fileno(), ctypes.sizeof(rF2Extended))
-            ffb_file = open("/dev/shm/$rFactor2SMMP_ForceFeedback$", "r+")
-            self._rf2_ffb = mmap.mmap(ffb_file.fileno(), ctypes.sizeof(rF2ForceFeedback))
-
+        self._rf2_tele = mmap.mmap(0, ctypes.sizeof(rF2Telemetry), "$rFactor2SMMP_Telemetry$")
         self.Rf2Tele = rF2Telemetry.from_buffer(self._rf2_tele)
+        self._rf2_scor = mmap.mmap(0, ctypes.sizeof(rF2Scoring), "$rFactor2SMMP_Scoring$")
         self.Rf2Scor = rF2Scoring.from_buffer(self._rf2_scor)
+        self._rf2_ext = mmap.mmap(0, ctypes.sizeof(rF2Extended), "$rFactor2SMMP_Extended$")
         self.Rf2Ext = rF2Extended.from_buffer(self._rf2_ext)
-        self.Rf2Ffb = rF2ForceFeedback.from_buffer(self._rf2_ffb)
-
-        self.DefTele = copy.deepcopy(self.Rf2Tele)
-        self.DefScor = copy.deepcopy(self.Rf2Scor)
-        self.DefExt = copy.deepcopy(self.Rf2Ext)
-        self.DefFfb = copy.deepcopy(self.Rf2Ffb)
-
-    def set_default_mmap(self):
-        """ Set default memory mapping data """
-        self.LastTele = copy.deepcopy(self.DefTele)
-        self.LastScor = copy.deepcopy(self.DefScor)
-        self.LastExt = copy.deepcopy(self.DefExt)
-        self.LastFfb = copy.deepcopy(self.DefFfb)
-
-    def reset_mmap(self):
-        """ Reset memory mapping """
-        self.close()  # close mmap first
-        self.start_mmap()
 
     def close(self):
-        """ Close memory mapping """
-        # This didn't help with the errors
-        try:
-            # Unassign those objects first
-            self.Rf2Tele = None
-            self.Rf2Scor = None
-            self.Rf2Ext = None
-            self.Rf2Ffb = None
-            # Close shared memory mapping
-            self._rf2_tele.close()
-            self._rf2_scor.close()
-            self._rf2_ext.close()
-            self._rf2_ffb.close()
-            print("sharedmemory mapping closed")
-        except BufferError:  # "cannot close exported pointers exist"
-            print("BufferError")
-            pass
+      # This didn't help with the errors
+      try:
+        self._rf2_tele.close()
+        self._rf2_scor.close()
+        self._rf2_ext.close()
+      except BufferError: # "cannot close exported pointers exist"
+        pass
 
     def __del__(self):
         self.close()
