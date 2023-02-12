@@ -28,6 +28,7 @@ class SimInfoSync():
     def __init__(self, input_pid=""):
         self.players_index = 99
         self.data_updating = False
+        self.stopped = True
         self._input_pid = input_pid
 
         self._rf2_tele = None  # map shared memory
@@ -191,11 +192,13 @@ class SimInfoSync():
 
             time.sleep(0.01)
 
+        self.stopped = True
         print("sharedmemory synced player data updating thread stopped")
 
     def startUpdating(self):
         """ Start data updating thread """
         self.data_updating = True
+        self.stopped = False
         index_thread = threading.Thread(target=self.__infoUpdate)
         index_thread.daemon=True
         index_thread.start()
@@ -204,7 +207,8 @@ class SimInfoSync():
     def stopUpdating(self):
         """ Stop data updating thread """
         self.data_updating = False
-        time.sleep(0.2)
+        while not self.stopped:  # wait until stopped
+            time.sleep(0.01)
 
     def syncedVehicleTelemetry(self):
         """ Get the variable for the player's vehicle """
