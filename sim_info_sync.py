@@ -130,12 +130,12 @@ class SimInfoSync():
             if data.mVehicles[index].mIsPlayer == 1:
                 self.players_index = index
                 return True
-        print("failed updating player index, using mID matching now")
+        #print("failed updating player index, using mID matching now")
         for index in range(MAX_VEHICLES):
             if self.players_mid == data.mVehicles[index].mID:
                 self.players_index = index
                 return True
-        print("no matching mID")
+        #print("no matching mID")
         return False  # return false if failed to find player index
 
     @staticmethod
