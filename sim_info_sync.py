@@ -29,6 +29,7 @@ class SimInfoSync():
 
     def __init__(self, input_pid=""):
         self.players_index = 99
+        self.players_mid = 0
         self.data_updating = False
         self.stopped = True
         self._input_pid = input_pid
@@ -122,19 +123,19 @@ class SimInfoSync():
     ###########################################################
     # Sync data for local player
 
-    def __playerVerified(self, data, pmid):
+    def __playerVerified(self, data):
         """ Check player index number on one same data piece """
         for index in range(MAX_VEHICLES):
             # Use 1 to avoid reading incorrect value
             if data.mVehicles[index].mIsPlayer == 1:
                 self.players_index = index
                 return True
-        #print("failed updating player index, using mID matching now")
+        print("failed updating player index, using mID matching now")
         for index in range(MAX_VEHICLES):
-            if pmid == data.mVehicles[index].mID:
+            if self.players_mid == data.mVehicles[index].mID:
                 self.players_index = index
                 return True
-        #print("no matching mID")
+        print("no matching mID")
         return False  # return false if failed to find player index
 
     @staticmethod
@@ -144,7 +145,6 @@ class SimInfoSync():
 
     def __infoUpdate(self):
         """ Update synced player data """
-        players_mid = 0          # player mID
         last_version_update = 0  # store last data version update
         re_version_update = 0    # store restarted data version update
         mmap_restarted = True    # whether has restarted memory mapping
@@ -158,13 +158,13 @@ class SimInfoSync():
             self.LastFfb = copy.deepcopy(self.Rf2Ffb)
 
             # Only update if data verified and player index found
-            if self.dataVerified(data_scor) and self.__playerVerified(data_scor, players_mid):
+            if self.dataVerified(data_scor) and self.__playerVerified(data_scor):
                 self.LastScor = copy.deepcopy(data_scor)  # synced scoring
-                players_mid = self.LastScor.mVehicles[self.players_index].mID  # update player mID
+                self.players_mid = self.LastScor.mVehicles[self.players_index].mID  # update player mID
 
                 # Only update if data verified and player mID matches
                 if (self.dataVerified(data_tele) and
-                    data_tele.mVehicles[self.players_index].mID == players_mid):
+                    data_tele.mVehicles[self.players_index].mID == self.players_mid):
                     self.LastTele = copy.deepcopy(data_tele)  # synced telemetry
 
             # Start checking data version update status
