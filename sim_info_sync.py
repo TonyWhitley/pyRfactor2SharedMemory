@@ -17,6 +17,8 @@ try:
 except ImportError:  # standalone, not package
     import rF2data
 
+MAX_VEHICLES = 128  # max 128 players supported by API
+
 
 class SimInfoSync():
     """
@@ -58,13 +60,13 @@ class SimInfoSync():
     def start_mmap(self):
         """ Start memory mapping """
         if platform.system() == "Windows":
-            self._rf2_tele = mmap.mmap(0, ctypes.sizeof(rF2data.rF2Telemetry),
+            self._rf2_tele = mmap.mmap(-1, ctypes.sizeof(rF2data.rF2Telemetry),
                                        f"$rFactor2SMMP_Telemetry${self._input_pid}")
-            self._rf2_scor = mmap.mmap(0, ctypes.sizeof(rF2data.rF2Scoring),
+            self._rf2_scor = mmap.mmap(-1, ctypes.sizeof(rF2data.rF2Scoring),
                                        f"$rFactor2SMMP_Scoring${self._input_pid}")
-            self._rf2_ext = mmap.mmap(0, ctypes.sizeof(rF2data.rF2Extended),
+            self._rf2_ext = mmap.mmap(-1, ctypes.sizeof(rF2data.rF2Extended),
                                       f"$rFactor2SMMP_Extended${self._input_pid}")
-            self._rf2_ffb = mmap.mmap(0, ctypes.sizeof(rF2data.rF2ForceFeedback),
+            self._rf2_ffb = mmap.mmap(-1, ctypes.sizeof(rF2data.rF2ForceFeedback),
                                       "$rFactor2SMMP_ForceFeedback$")
         else:
             tele_file = open("/dev/shm/$rFactor2SMMP_Telemetry$", "r+")
@@ -120,19 +122,25 @@ class SimInfoSync():
     ###########################################################
     # Sync data for local player
 
-    def __playerVerified(self, input_data):
+    def __playerVerified(self, data, pmid):
         """ Check player index number on one same data piece """
-        for _player in range(128):  # max 128 players supported by API
+        for index in range(MAX_VEHICLES):
             # Use 1 to avoid reading incorrect value
-            if input_data.mVehicles[_player].mIsPlayer == 1:
-                self.players_index = _player
+            if data.mVehicles[index].mIsPlayer == 1:
+                self.players_index = index
                 return True
+        #print("failed updating player index, using mID matching now")
+        for index in range(MAX_VEHICLES):
+            if pmid == data.mVehicles[index].mID:
+                self.players_index = index
+                return True
+        #print("no matching mID")
         return False  # return false if failed to find player index
 
     @staticmethod
-    def dataVerified(input_data):
+    def dataVerified(data):
         """ Verify data """
-        return input_data.mVersionUpdateEnd == input_data.mVersionUpdateBegin
+        return data.mVersionUpdateEnd == data.mVersionUpdateBegin
 
     def __infoUpdate(self):
         """ Update synced player data """
@@ -150,7 +158,7 @@ class SimInfoSync():
             self.LastFfb = copy.deepcopy(self.Rf2Ffb)
 
             # Only update if data verified and player index found
-            if self.dataVerified(data_scor) and self.__playerVerified(data_scor):
+            if self.dataVerified(data_scor) and self.__playerVerified(data_scor, players_mid):
                 self.LastScor = copy.deepcopy(data_scor)  # synced scoring
                 players_mid = self.LastScor.mVehicles[self.players_index].mID  # update player mID
 
@@ -183,8 +191,14 @@ class SimInfoSync():
                 self.set_default_mmap()
                 print("sharedmemory mapping data reset to default")
 
+            if re_version_update != 0 and data_scor.mVersionUpdateEnd != re_version_update:
+                re_version_update = 0
+                self.reset_mmap()
+                print(f"sharedmemory mapping re-restarted - version:{last_version_update}")
+
             #print(f"c1:{check_counter:03.0f} "
             #      f"c2:{restore_counter:03.0f} "
+            #      f"idx:{self.players_index:03.0f} "
             #      f"now:{self.LastScor.mVersionUpdateEnd:07.0f} "
             #      f"last:{last_version_update:07.0f} "
             #      f"re:{re_version_update:07.0f} "
