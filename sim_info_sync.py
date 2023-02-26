@@ -17,6 +17,8 @@ try:
 except ImportError:  # standalone, not package
     import rF2data
 
+from .sharedMemoryAPI import Cbytestring2Python
+
 MAX_VEHICLES = 128  # max 128 players supported by API
 
 
@@ -125,17 +127,12 @@ class SimInfoSync():
 
     def __playerVerified(self, data):
         """ Check player index number on one same data piece """
+        plr_name = Cbytestring2Python(data.mScoringInfo.mPlayerName)
         for index in range(MAX_VEHICLES):
             # Use 1 to avoid reading incorrect value
-            if data.mVehicles[index].mIsPlayer == 1:
+            if Cbytestring2Python(data.mVehicles[index].mDriverName) == plr_name:
                 self.players_index = index
                 return True
-        #print("failed updating player index, using mID matching now")
-        for index in range(MAX_VEHICLES):
-            if self.players_mid == data.mVehicles[index].mID:
-                self.players_index = index
-                return True
-        #print("no matching mID")
         return False  # return false if failed to find player index
 
     @staticmethod
