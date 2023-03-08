@@ -17,9 +17,7 @@ try:
 except ImportError:  # standalone, not package
     import rF2data
 
-from .sharedMemoryAPI import Cbytestring2Python
-
-MAX_VEHICLES = 128  # max 128 players supported by API
+MAX_VEHICLES = rF2data.rFactor2Constants.MAX_MAPPED_VEHICLES
 
 
 class SimInfoSync():
@@ -30,8 +28,8 @@ class SimInfoSync():
     """
 
     def __init__(self, input_pid=""):
-        self.players_index = 99
-        self.players_mid = 99
+        self.players_scor_index = 99
+        self.players_tele_index = 99
         self.data_updating = False
         self.stopped = True
         self._input_pid = input_pid
@@ -95,23 +93,25 @@ class SimInfoSync():
             print("sharedmemory mapping closed")
         except BufferError:  # "cannot close exported pointers exist"
             print("BufferError")
-            pass
 
     ###########################################################
     # Sync data for local player
 
-    def __playerVerified(self, data):
-        """ Check player index number on one same data piece """
-        for index in range(MAX_VEHICLES):
-            if data.mVehicles[index].mIsPlayer:
-                self.players_index = index
-                return True
-        return False  # return false if failed to find player index
-
     @staticmethod
-    def dataVerified(data):
-        """ Verify data """
-        return data.mVersionUpdateEnd == data.mVersionUpdateBegin
+    def __find_local_player_index_scor(data_scor):
+        """ Find player index in rF2Scoring """
+        for index in range(MAX_VEHICLES):
+            if data_scor.mVehicles[index].mIsPlayer:
+                return index
+        return 0
+
+    def find_player_index_tele(self, index_scor):
+        """ Find player index in rF2Telemetry using mID from rF2Scoring """
+        scor_mid = self.LastScor.mVehicles[index_scor].mID
+        for index in range(MAX_VEHICLES):
+            if self.LastTele.mVehicles[index].mID == scor_mid:
+                return index
+        return 0
 
     def __infoUpdate(self):
         """ Update synced player data """
@@ -121,30 +121,28 @@ class SimInfoSync():
         check_counter = 0        # counter for data version update check
 
         while self.data_updating:
-            data_scor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)  # use deepcopy to avoid data interruption
+            data_scor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
             data_tele = rF2data.rF2Telemetry.from_buffer_copy(self._rf2_tele)
             self.LastExt = rF2data.rF2Extended.from_buffer_copy(self._rf2_ext)
             self.LastFfb = rF2data.rF2ForceFeedback.from_buffer_copy(self._rf2_ffb)
 
-            # Only update if data verified and player index found
-            if not data_freezed and self.__playerVerified(data_scor):
-                self.LastScor = copy.deepcopy(data_scor)  # synced scoring
-                self.players_mid = self.LastScor.mVehicles[self.players_index].mID  # update player mID
-
-                # Only update if data verified and player mID matches
-                if data_tele.mVehicles[self.players_index].mID == self.players_mid:
-                    self.LastTele = copy.deepcopy(data_tele)  # synced telemetry
+            # Update player index
+            if not data_freezed:
+                self.players_scor_index = self.__find_local_player_index_scor(data_scor)
+                self.LastScor = copy.deepcopy(data_scor)
+                self.players_tele_index = self.find_player_index_tele(self.players_scor_index)
+                self.LastTele = copy.deepcopy(data_tele)
 
             # Start checking data version update status
             check_counter += 1
 
-            if check_counter > 200:  # active after around 1 seconds
+            if check_counter > 330:  # active after around 1 seconds
                 if (not data_freezed and last_version_update > 0
                     and last_version_update == data_scor.mVersionUpdateEnd):
                     self.reset_mmap()
                     data_freezed = True
                     re_version_update = data_scor.mVersionUpdateEnd
-                    self.LastTele.mVehicles[self.players_index].mIgnitionStarter = 0
+                    self.syncedVehicleTelemetry().mIgnitionStarter = 0
                     print(f"sharedmemory mapping restarted - version:{last_version_update}")
                 last_version_update = data_scor.mVersionUpdateEnd
                 check_counter = 0  # reset counter
@@ -174,11 +172,11 @@ class SimInfoSync():
 
     def syncedVehicleTelemetry(self):
         """ Get the variable for the player's vehicle """
-        return self.LastTele.mVehicles[self.players_index]
+        return self.LastTele.mVehicles[self.players_tele_index]
 
     def syncedVehicleScoring(self):
         """ Get the variable for the player's vehicle """
-        return self.LastScor.mVehicles[self.players_index]
+        return self.LastScor.mVehicles[self.players_scor_index]
 
     ###########################################################
 
