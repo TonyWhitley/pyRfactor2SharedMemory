@@ -103,7 +103,7 @@ class SimInfoSync():
         for index in range(MAX_VEHICLES):
             if data_scor.mVehicles[index].mIsPlayer:
                 return index
-        return 0
+        return 99
 
     def find_player_index_tele(self, index_scor):
         """ Find player index in rF2Telemetry using mID from rF2Scoring """
@@ -111,7 +111,7 @@ class SimInfoSync():
         for index in range(MAX_VEHICLES):
             if self.LastTele.mVehicles[index].mID == scor_mid:
                 return index
-        return 0
+        return 99
 
     def __infoUpdate(self):
         """ Update synced player data """
