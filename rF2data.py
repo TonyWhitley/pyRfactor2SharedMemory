@@ -255,7 +255,14 @@ class rF2VehicleTelemetry(ctypes.Structure):
         ('mTurboBoostPressure', ctypes.c_double),                           # current turbo boost pressure if available
         ('mPhysicsToGraphicsOffset', ctypes.c_float*3),                     # offset from static CG to graphical center
         ('mPhysicalSteeringWheelRange', ctypes.c_float),                    # the *physical* steering wheel range
-        ('mExpansion', ctypes.c_ubyte*152),                                    # for future use (note that the slot ID has been moved to mID above)
+        ('mDeltaBest', ctypes.c_double),                                    # (omitted in error by S397)
+        ('mBatteryChargeFraction', ctypes.c_double),                        # Battery charge as fraction [0.0-1.0]
+        ('mElectricBoostMotorTorque', ctypes.c_double),                     # current torque of boost motor (can be negative when in regenerating mode)
+        ('mElectricBoostMotorRPM', ctypes.c_double),                        # current rpm of boost motor
+        ('mElectricBoostMotorTemperature', ctypes.c_double),                # current temperature of boost motor
+        ('mElectricBoostWaterTemperature', ctypes.c_double),                # current water temperature of boost motor cooler if present (0 otherwise)
+        ('mElectricBoostMotorState', ctypes.c_ubyte),                       # 0=unavailable 1=inactive, 2=propulsion, 3=regeneration
+        ('mExpansion', ctypes.c_ubyte*103),                                 # for future use (note that the slot ID has been moved to mID above)
         ('mWheels', rF2Wheel*4),                                   # wheel info (front left, front right, rear left, rear right)
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
