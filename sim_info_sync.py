@@ -48,6 +48,14 @@ class SimInfoSync():
         self.copy_mmap()
         print("sharedmemory mapping started")
 
+    def linux_mmap(self, name, size):
+        file = open(name, "a+")
+        if file.tell() == 0:
+            file.write("\0" * size)
+            file.flush()
+
+        return mmap.mmap(file.fileno(), size)
+
     def start_mmap(self):
         """ Start memory mapping """
         if platform.system() == "Windows":
@@ -60,14 +68,10 @@ class SimInfoSync():
             self._rf2_ffb = mmap.mmap(-1, ctypes.sizeof(rF2data.rF2ForceFeedback),
                                       "$rFactor2SMMP_ForceFeedback$")
         else:
-            tele_file = open("/dev/shm/$rFactor2SMMP_Telemetry$", "r+")
-            self._rf2_tele = mmap.mmap(tele_file.fileno(), ctypes.sizeof(rF2data.rF2Telemetry))
-            scor_file = open("/dev/shm/$rFactor2SMMP_Scoring$", "r+")
-            self._rf2_scor = mmap.mmap(scor_file.fileno(), ctypes.sizeof(rF2data.rF2Scoring))
-            ext_file = open("/dev/shm/$rFactor2SMMP_Extended$", "r+")
-            self._rf2_ext = mmap.mmap(ext_file.fileno(), ctypes.sizeof(rF2data.rF2Extended))
-            ffb_file = open("/dev/shm/$rFactor2SMMP_ForceFeedback$", "r+")
-            self._rf2_ffb = mmap.mmap(ffb_file.fileno(), ctypes.sizeof(rF2data.rF2ForceFeedback))
+            self._rf2_tele = self.linux_mmap("/dev/shm/$rFactor2SMMP_Telemetry$", ctypes.sizeof(rF2data.rF2Telemetry))
+            self._rf2_scor = self.linux_mmap("/dev/shm/$rFactor2SMMP_Scoring$", ctypes.sizeof(rF2data.rF2Scoring))
+            self._rf2_ext = self.linux_mmap("/dev/shm/$rFactor2SMMP_Extended$", ctypes.sizeof(rF2data.rF2Extended))
+            self._rf2_ffb = self.linux_mmap("/dev/shm/$rFactor2SMMP_ForceFeedback$", ctypes.sizeof(rF2data.rF2ForceFeedback))
 
     def copy_mmap(self):
         """ Copy memory mapping data """
