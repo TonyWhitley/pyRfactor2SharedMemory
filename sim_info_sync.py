@@ -111,7 +111,9 @@ class SimInfoSync():
         last_version_update = 0  # store last data version update
         re_version_update = 0    # store restarted data version update
         data_freezed = True      # whether data is freezed
-        check_counter = 0        # counter for data version update check
+        check_timer = 0        # timer for data version update check
+        check_timer_start = 0
+        update_delay = 0.5  # longer delay while inactive
 
         while self.data_updating:
             data_scor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
@@ -130,23 +132,25 @@ class SimInfoSync():
                 self.LastTelePlayer = copy.deepcopy(self.LastTele.mVehicles[self.players_tele_index])
 
             # Start checking data version update status
-            check_counter += 1
+            check_timer = time.time() - check_timer_start
 
-            if check_counter > 330:  # active after around 5 seconds
+            if check_timer > 5:  # active after around 5 seconds
                 if (not data_freezed and
-                    0 < last_version_update == data_scor.mVersionUpdateEnd):
+                    last_version_update == data_scor.mVersionUpdateEnd):
                     #self.reset_mmap()
+                    update_delay = 0.5
                     data_freezed = True
                     re_version_update = data_scor.mVersionUpdateEnd
                     self.syncedVehicleTelemetry().mIgnitionStarter = 0
                     print(f"sharedmemory mapping - data version freeze detected:{last_version_update}")
                 last_version_update = data_scor.mVersionUpdateEnd
-                check_counter = 0  # reset counter
+                check_timer_start = time.time()  # reset timer
 
             if data_freezed and re_version_update != data_scor.mVersionUpdateEnd:
                 data_freezed = False
+                update_delay = 0.01
 
-            time.sleep(0.01)
+            time.sleep(update_delay)
 
         self.stopped = True
         print("sharedmemory synced player data updating thread stopped")
