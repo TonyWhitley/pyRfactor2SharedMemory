@@ -28,11 +28,12 @@ class SimInfoSync():
     """
 
     def __init__(self, input_pid=""):
+        self.stopped = True
+        self.data_updating = False
+
+        self._input_pid = input_pid
         self.players_scor_index = MAX_VEHICLES - 1
         self.players_tele_index = MAX_VEHICLES - 1
-        self.data_updating = False
-        self.stopped = True
-        self._input_pid = input_pid
 
         self.start_mmap()
         self.copy_mmap()
@@ -152,12 +153,13 @@ class SimInfoSync():
 
     def startUpdating(self):
         """ Start data updating thread """
-        self.data_updating = True
-        self.stopped = False
-        index_thread = threading.Thread(target=self.__infoUpdate)
-        index_thread.daemon=True
-        index_thread.start()
-        print("sharedmemory synced player data updating thread started")
+        if self.stopped:
+            self.data_updating = True
+            self.stopped = False
+            index_thread = threading.Thread(target=self.__infoUpdate)
+            index_thread.daemon=True
+            index_thread.start()
+            print("sharedmemory synced player data updating thread started")
 
     def stopUpdating(self):
         """ Stop data updating thread """
