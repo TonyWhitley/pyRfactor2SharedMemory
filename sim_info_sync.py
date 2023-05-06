@@ -18,6 +18,7 @@ except ImportError:  # standalone, not package
     import rF2data
 
 MAX_VEHICLES = rF2data.rFactor2Constants.MAX_MAPPED_VEHICLES
+INVALID_INDEX = -1
 
 
 class SimInfoSync():
@@ -32,8 +33,8 @@ class SimInfoSync():
         self.data_updating = False
 
         self._input_pid = input_pid
-        self.players_scor_index = MAX_VEHICLES - 1
-        self.players_tele_index = MAX_VEHICLES - 1
+        self.players_scor_index = INVALID_INDEX
+        self.players_tele_index = INVALID_INDEX
 
         self.start_mmap()
         self.copy_mmap()
@@ -100,7 +101,7 @@ class SimInfoSync():
         for index in range(MAX_VEHICLES):
             if data_scor.mVehicles[index].mIsPlayer:
                 return index
-        return MAX_VEHICLES - 1
+        return INVALID_INDEX
 
     def find_player_index_tele(self, index_scor):
         """ Find player index in rF2Telemetry using mID from rF2Scoring """
@@ -108,7 +109,7 @@ class SimInfoSync():
         for index in range(MAX_VEHICLES):
             if self.LastTele.mVehicles[index].mID == scor_mid:
                 return index
-        return MAX_VEHICLES - 1
+        return INVALID_INDEX
 
     def __infoUpdate(self):
         """ Update synced player data """
