@@ -9,7 +9,6 @@ import ctypes
 import mmap
 import time
 import threading
-import copy
 import platform
 
 try:
@@ -41,6 +40,7 @@ class SimInfoSync():
         print("sharedmemory mapping started")
 
     def linux_mmap(self, name, size):
+        """ Linux memory mapping """
         file = open(name, "a+")
         if file.tell() == 0:
             file.write("\0" * size)
@@ -71,8 +71,8 @@ class SimInfoSync():
         self.LastScor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
         self.LastExt = rF2data.rF2Extended.from_buffer_copy(self._rf2_ext)
         self.LastFfb = rF2data.rF2ForceFeedback.from_buffer_copy(self._rf2_ffb)
-        self.LastScorPlayer = copy.deepcopy(self.LastScor.mVehicles[self.players_scor_index])
-        self.LastTelePlayer = copy.deepcopy(self.LastTele.mVehicles[self.players_tele_index])
+        self.LastScorPlayer = self.LastScor.mVehicles[self.players_scor_index]
+        self.LastTelePlayer = self.LastTele.mVehicles[self.players_tele_index]
 
     def reset_mmap(self):
         """ Reset memory mapping """
@@ -140,10 +140,10 @@ class SimInfoSync():
                 self.players_tele_index = self.__local_index_tele(self.players_scor_index, data_tele)
 
                 if data_scor.mVehicles[self.players_scor_index].mID == data_tele.mVehicles[self.players_tele_index].mID:
-                    self.LastScor = copy.deepcopy(data_scor)
-                    self.LastTele = copy.deepcopy(data_tele)
-                    self.LastScorPlayer = copy.deepcopy(data_scor.mVehicles[self.players_scor_index])
-                    self.LastTelePlayer = copy.deepcopy(data_tele.mVehicles[self.players_tele_index])
+                    self.LastScor = data_scor
+                    self.LastTele = data_tele
+                    self.LastScorPlayer = self.LastScor.mVehicles[self.players_scor_index]
+                    self.LastTelePlayer = self.LastTele.mVehicles[self.players_tele_index]
 
             # Start checking data version update status
             check_timer = time.time() - check_timer_start
