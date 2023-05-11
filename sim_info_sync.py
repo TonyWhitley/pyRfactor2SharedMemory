@@ -68,11 +68,11 @@ class SimInfoSync():
 
     def copy_mmap(self):
         """ Copy memory mapping data """
-        self.LastTele = rF2data.rF2Telemetry.from_buffer_copy(self._rf2_tele)
-        self.LastScor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
         self.LastExt = rF2data.rF2Extended.from_buffer_copy(self._rf2_ext)
         self.LastFfb = rF2data.rF2ForceFeedback.from_buffer_copy(self._rf2_ffb)
+        self.LastScor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
         self.LastScorPlayer = copy.deepcopy(self.LastScor.mVehicles[self.players_scor_index])
+        self.LastTele = rF2data.rF2Telemetry.from_buffer_copy(self._rf2_tele)
         self.LastTelePlayer = copy.deepcopy(self.LastTele.mVehicles[self.players_tele_index])
 
     def reset_mmap(self):
@@ -112,6 +112,11 @@ class SimInfoSync():
                 return index
         return INVALID_INDEX
 
+    @staticmethod
+    def ver_check(input_data):
+        """ Update version check """
+        return input_data.mVersionUpdateEnd == input_data.mVersionUpdateBegin
+
     def __infoUpdate(self):
         """ Update synced player data """
         last_version_update = 0  # store last data version update
@@ -128,14 +133,21 @@ class SimInfoSync():
             self.LastFfb = rF2data.rF2ForceFeedback.from_buffer_copy(self._rf2_ffb)
 
             # Update player index
-            if not data_freezed:
-                self.players_scor_index = self.__find_local_player_index_scor(data_scor)
-                self.LastScor = copy.deepcopy(data_scor)
-                self.players_tele_index = self.find_player_index_tele(self.players_scor_index)
-                self.LastTele = copy.deepcopy(data_tele)
+            if not data_freezed and self.ver_check(data_scor) and self.ver_check(data_tele):
 
-                self.LastScorPlayer = copy.deepcopy(self.LastScor.mVehicles[self.players_scor_index])
-                self.LastTelePlayer = copy.deepcopy(self.LastTele.mVehicles[self.players_tele_index])
+                for idx_scor in range(MAX_VEHICLES):
+                    if data_scor.mVehicles[idx_scor].mIsPlayer:
+                        self.players_scor_index = idx_scor
+                        self.LastScor = copy.deepcopy(data_scor)
+                        self.LastScorPlayer = copy.deepcopy(data_scor.mVehicles[idx_scor])
+
+                        for idx_tele in range(MAX_VEHICLES):
+                            if data_tele.mVehicles[idx_tele].mID == data_scor.mVehicles[idx_scor].mID:
+                                self.players_tele_index = idx_tele
+                                self.LastTele = copy.deepcopy(data_tele)
+                                self.LastTelePlayer = copy.deepcopy(data_tele.mVehicles[idx_tele])
+                                break
+                        break
 
             # Start checking data version update status
             check_timer = time.time() - check_timer_start
