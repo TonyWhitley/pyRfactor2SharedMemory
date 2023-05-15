@@ -71,9 +71,9 @@ class SimInfoSync():
         self.LastExt = rF2data.rF2Extended.from_buffer_copy(self._rf2_ext)
         self.LastFfb = rF2data.rF2ForceFeedback.from_buffer_copy(self._rf2_ffb)
         self.LastScor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
-        self.LastScorPlayer = copy.deepcopy(self.LastScor.mVehicles[self.players_scor_index])
         self.LastTele = rF2data.rF2Telemetry.from_buffer_copy(self._rf2_tele)
-        self.LastTelePlayer = copy.deepcopy(self.LastTele.mVehicles[self.players_tele_index])
+        self.LastScorPlayer = copy.deepcopy(self.LastScor.mVehicles[INVALID_INDEX])
+        self.LastTelePlayer = copy.deepcopy(self.LastTele.mVehicles[INVALID_INDEX])
 
     def reset_mmap(self):
         """ Reset memory mapping """
@@ -96,16 +96,31 @@ class SimInfoSync():
     ###########################################################
     # Sync data for local player
 
-    @staticmethod
-    def __find_local_player_index_scor(data_scor):
-        """ Find player index in rF2Scoring """
-        for index in range(MAX_VEHICLES):
-            if data_scor.mVehicles[index].mIsPlayer:
-                return index
-        return INVALID_INDEX
+    def __reset_local_player_data(self, data_scor, data_tele):
+        """ Reset local player data """
+        self.players_scor_index = INVALID_INDEX
+        self.players_tele_index = INVALID_INDEX
+        self.LastScorPlayer = copy.deepcopy(data_scor.mVehicles[INVALID_INDEX])
+        self.LastTelePlayer = copy.deepcopy(data_tele.mVehicles[INVALID_INDEX])
+        print("sharedmemory mapping - local player data reset")
+
+    def __local_player_data(self, data_scor, data_tele):
+        """ Get local player data """
+        for idx_scor in range(MAX_VEHICLES):
+            if data_scor.mVehicles[idx_scor].mIsPlayer:
+                self.players_scor_index = idx_scor
+                self.LastScorPlayer = copy.deepcopy(data_scor.mVehicles[idx_scor])
+
+                for idx_tele in range(MAX_VEHICLES):
+                    if data_tele.mVehicles[idx_tele].mID == data_scor.mVehicles[idx_scor].mID:
+                        self.players_tele_index = idx_tele
+                        self.LastTelePlayer = copy.deepcopy(data_tele.mVehicles[idx_tele])
+                        return True
+                return True
+        return False
 
     def find_player_index_tele(self, index_scor):
-        """ Find player index in rF2Telemetry using mID from rF2Scoring """
+        """ Find player index using mID """
         scor_mid = self.LastScor.mVehicles[index_scor].mID
         for index in range(MAX_VEHICLES):
             if self.LastTele.mVehicles[index].mID == scor_mid:
@@ -120,10 +135,10 @@ class SimInfoSync():
     def __infoUpdate(self):
         """ Update synced player data """
         last_version_update = 0  # store last data version update
-        re_version_update = 0    # store restarted data version update
         data_freezed = True      # whether data is freezed
         check_timer = 0        # timer for data version update check
         check_timer_start = 0
+        reset_counter = 0
         update_delay = 0.5  # longer delay while inactive
 
         while self.data_updating:
@@ -134,37 +149,33 @@ class SimInfoSync():
 
             # Update player index
             if not data_freezed and self.ver_check(data_scor) and self.ver_check(data_tele):
+                player_data = self.__local_player_data(data_scor, data_tele)
+                self.LastScor = copy.deepcopy(data_scor)
+                self.LastTele = copy.deepcopy(data_tele)
 
-                for idx_scor in range(MAX_VEHICLES):
-                    if data_scor.mVehicles[idx_scor].mIsPlayer:
-                        self.players_scor_index = idx_scor
-                        self.LastScor = copy.deepcopy(data_scor)
-                        self.LastScorPlayer = copy.deepcopy(data_scor.mVehicles[idx_scor])
+                # Stop & reset player data if local player index no longer exists
+                # 5 retries before reset
+                if not player_data and reset_counter < 6:
+                    reset_counter += 1
+                elif player_data:
+                    reset_counter = 0
 
-                        for idx_tele in range(MAX_VEHICLES):
-                            if data_tele.mVehicles[idx_tele].mID == data_scor.mVehicles[idx_scor].mID:
-                                self.players_tele_index = idx_tele
-                                self.LastTele = copy.deepcopy(data_tele)
-                                self.LastTelePlayer = copy.deepcopy(data_tele.mVehicles[idx_tele])
-                                break
-                        break
+                if reset_counter == 5:
+                    self.__reset_local_player_data(data_scor, data_tele)
 
             # Start checking data version update status
             check_timer = time.time() - check_timer_start
 
             if check_timer > 5:  # active after around 5 seconds
-                if (not data_freezed and
-                    last_version_update == data_scor.mVersionUpdateEnd):
-                    #self.reset_mmap()
+                if not data_freezed and last_version_update == data_scor.mVersionUpdateEnd:
                     update_delay = 0.5
                     data_freezed = True
-                    re_version_update = data_scor.mVersionUpdateEnd
-                    self.syncedVehicleTelemetry().mIgnitionStarter = 0
+                    self.__reset_local_player_data(data_scor, data_tele)
                     print(f"sharedmemory mapping - data version freeze detected:{last_version_update}")
                 last_version_update = data_scor.mVersionUpdateEnd
                 check_timer_start = time.time()  # reset timer
 
-            if data_freezed and re_version_update != data_scor.mVersionUpdateEnd:
+            if data_freezed and last_version_update != data_scor.mVersionUpdateEnd:
                 data_freezed = False
                 update_delay = 0.01
 
@@ -178,16 +189,14 @@ class SimInfoSync():
         if self.stopped:
             self.data_updating = True
             self.stopped = False
-            index_thread = threading.Thread(target=self.__infoUpdate)
-            index_thread.daemon=True
-            index_thread.start()
+            self.data_thread = threading.Thread(target=self.__infoUpdate, daemon=True)
+            self.data_thread.start()
             print("sharedmemory synced player data updating thread started")
 
     def stopUpdating(self):
         """ Stop data updating thread """
         self.data_updating = False
-        while not self.stopped:  # wait until stopped
-            time.sleep(0.01)
+        self.data_thread.join()
 
     def syncedVehicleTelemetry(self):
         """ Get the variable for the player's vehicle """
