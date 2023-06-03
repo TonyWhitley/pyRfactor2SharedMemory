@@ -11,6 +11,7 @@ import time
 import threading
 import copy
 import platform
+import logging
 
 try:
     from . import rF2data
@@ -21,24 +22,26 @@ MAX_VEHICLES = rF2data.rFactor2Constants.MAX_MAPPED_VEHICLES
 INVALID_INDEX = -1
 
 
-class SimInfoSync():
+class SimInfoSync:
     """
     API for rF2 shared memory
 
     Player-Synced data.
     """
 
-    def __init__(self, input_pid=""):
+    def __init__(self, input_pid="", logger=__name__):
         self.stopped = True
         self.data_updating = False
 
         self._input_pid = input_pid
+        self._logger = logging.getLogger(logger)
+        self._freezed = False
         self.players_scor_index = INVALID_INDEX
         self.players_tele_index = INVALID_INDEX
 
         self.start_mmap()
         self.copy_mmap()
-        print("sharedmemory mapping started")
+        self._logger.info("sharedmemory mapping started")
 
     def linux_mmap(self, name, size):
         """ Linux memory mapping """
@@ -52,19 +55,39 @@ class SimInfoSync():
     def start_mmap(self):
         """ Start memory mapping """
         if platform.system() == "Windows":
-            self._rf2_tele = mmap.mmap(-1, ctypes.sizeof(rF2data.rF2Telemetry),
-                                       f"$rFactor2SMMP_Telemetry${self._input_pid}")
-            self._rf2_scor = mmap.mmap(-1, ctypes.sizeof(rF2data.rF2Scoring),
-                                       f"$rFactor2SMMP_Scoring${self._input_pid}")
-            self._rf2_ext = mmap.mmap(-1, ctypes.sizeof(rF2data.rF2Extended),
-                                      f"$rFactor2SMMP_Extended${self._input_pid}")
-            self._rf2_ffb = mmap.mmap(-1, ctypes.sizeof(rF2data.rF2ForceFeedback),
-                                      "$rFactor2SMMP_ForceFeedback$")
+            self._rf2_tele = mmap.mmap(
+                -1, ctypes.sizeof(rF2data.rF2Telemetry),
+                f"$rFactor2SMMP_Telemetry${self._input_pid}"
+            )
+            self._rf2_scor = mmap.mmap(
+                -1, ctypes.sizeof(rF2data.rF2Scoring),
+                f"$rFactor2SMMP_Scoring${self._input_pid}"
+            )
+            self._rf2_ext = mmap.mmap(
+                -1, ctypes.sizeof(rF2data.rF2Extended),
+                f"$rFactor2SMMP_Extended${self._input_pid}"
+            )
+            self._rf2_ffb = mmap.mmap(
+                -1, ctypes.sizeof(rF2data.rF2ForceFeedback),
+                "$rFactor2SMMP_ForceFeedback$"
+            )
         else:
-            self._rf2_tele = self.linux_mmap("/dev/shm/$rFactor2SMMP_Telemetry$", ctypes.sizeof(rF2data.rF2Telemetry))
-            self._rf2_scor = self.linux_mmap("/dev/shm/$rFactor2SMMP_Scoring$", ctypes.sizeof(rF2data.rF2Scoring))
-            self._rf2_ext = self.linux_mmap("/dev/shm/$rFactor2SMMP_Extended$", ctypes.sizeof(rF2data.rF2Extended))
-            self._rf2_ffb = self.linux_mmap("/dev/shm/$rFactor2SMMP_ForceFeedback$", ctypes.sizeof(rF2data.rF2ForceFeedback))
+            self._rf2_tele = self.linux_mmap(
+                "/dev/shm/$rFactor2SMMP_Telemetry$",
+                ctypes.sizeof(rF2data.rF2Telemetry)
+            )
+            self._rf2_scor = self.linux_mmap(
+                "/dev/shm/$rFactor2SMMP_Scoring$",
+                ctypes.sizeof(rF2data.rF2Scoring)
+            )
+            self._rf2_ext = self.linux_mmap(
+                "/dev/shm/$rFactor2SMMP_Extended$",
+                ctypes.sizeof(rF2data.rF2Extended)
+            )
+            self._rf2_ffb = self.linux_mmap(
+                "/dev/shm/$rFactor2SMMP_ForceFeedback$",
+                ctypes.sizeof(rF2data.rF2ForceFeedback)
+            )
 
     def copy_mmap(self):
         """ Copy memory mapping data """
@@ -82,27 +105,16 @@ class SimInfoSync():
 
     def close(self):
         """ Close memory mapping """
-        # This didn't help with the errors
         try:
-            # Close shared memory mapping
             self._rf2_tele.close()
             self._rf2_scor.close()
             self._rf2_ext.close()
             self._rf2_ffb.close()
-            print("sharedmemory mapping closed")
+            self._logger.info("sharedmemory mapping closed")
         except BufferError:  # "cannot close exported pointers exist"
-            print("BufferError")
+            self._logger.error("failed to close mmap")
 
     ###########################################################
-    # Sync data for local player
-
-    def __reset_local_player_data(self, data_scor, data_tele):
-        """ Reset local player data """
-        self.players_scor_index = INVALID_INDEX
-        self.players_tele_index = INVALID_INDEX
-        self.LastScorPlayer = copy.deepcopy(data_scor.mVehicles[INVALID_INDEX])
-        self.LastTelePlayer = copy.deepcopy(data_tele.mVehicles[INVALID_INDEX])
-        print("sharedmemory mapping - local player data reset")
 
     def __local_player_data(self, data_scor, data_tele):
         """ Get local player data """
@@ -150,8 +162,8 @@ class SimInfoSync():
             # Update player index
             if not data_freezed and self.ver_check(data_scor) and self.ver_check(data_tele):
                 player_data = self.__local_player_data(data_scor, data_tele)
-                self.LastScor = copy.deepcopy(data_scor)
-                self.LastTele = copy.deepcopy(data_tele)
+                self.LastScor = data_scor
+                self.LastTele = data_tele
 
                 # Stop & reset player data if local player index no longer exists
                 # 5 retries before reset
@@ -159,9 +171,11 @@ class SimInfoSync():
                     reset_counter += 1
                 elif player_data:
                     reset_counter = 0
+                    self._freezed = False
 
                 if reset_counter == 5:
-                    self.__reset_local_player_data(data_scor, data_tele)
+                    self._freezed = True
+                    self._logger.info("sharedmemory mapping player data freezed")
 
             # Start checking data version update status
             check_timer = time.time() - check_timer_start
@@ -170,19 +184,28 @@ class SimInfoSync():
                 if not data_freezed and last_version_update == data_scor.mVersionUpdateEnd:
                     update_delay = 0.5
                     data_freezed = True
-                    self.__reset_local_player_data(data_scor, data_tele)
-                    print(f"sharedmemory mapping - data version freeze detected:{last_version_update}")
+                    self._freezed = True
+                    self._logger.info(
+                        "sharedmemory mapping freezed, version %s",
+                        last_version_update
+                    )
                 last_version_update = data_scor.mVersionUpdateEnd
                 check_timer_start = time.time()  # reset timer
 
             if data_freezed and last_version_update != data_scor.mVersionUpdateEnd:
                 data_freezed = False
+                self._freezed = False
                 update_delay = 0.01
+                self._logger.info(
+                    "sharedmemory mapping unfreezed, version %s",
+                    data_scor.mVersionUpdateEnd
+                )
 
             time.sleep(update_delay)
 
         self.stopped = True
-        print("sharedmemory synced player data updating thread stopped")
+        self._freezed = False
+        self._logger.info("sharedmemory data updating thread stopped")
 
     def startUpdating(self):
         """ Start data updating thread """
@@ -191,7 +214,7 @@ class SimInfoSync():
             self.stopped = False
             self.data_thread = threading.Thread(target=self.__infoUpdate, daemon=True)
             self.data_thread.start()
-            print("sharedmemory synced player data updating thread started")
+            self._logger.info("sharedmemory data updating thread started")
 
     def stopUpdating(self):
         """ Stop data updating thread """
@@ -206,20 +229,30 @@ class SimInfoSync():
         """ Get the variable for the player's vehicle """
         return self.LastScorPlayer
 
-    ###########################################################
+    def freezed(self):
+        """ Check whether data freezed """
+        return self._freezed
+
+    @staticmethod
+    def cbytes2str(bytestring):
+        """Convert bytes to string"""
+        if type(bytestring) == bytes:
+            return bytestring.decode().rstrip()
+        return ""
 
     def __del__(self):
         self.close()
 
+
 if __name__ == '__main__':
     # Example usage
     info = SimInfoSync()
-    info.startUpdating()  # start Shared Memory updating thread
-    version = info.LastExt.mVersion
-    v = bytes(version).partition(b'\0')[0].decode().rstrip()
+    info.startUpdating()
+    time.sleep(0.5)
+    version = info.cbytes2str(info.LastExt.mVersion)
     clutch = info.LastTele.mVehicles[0].mUnfilteredClutch # 1.0 clutch down, 0 clutch up
-    gear   = info.LastTele.mVehicles[0].mGear  # -1 to 6
-    print(f"Map version: {v}\n"
-          f"Gear: {gear}, Clutch position: {clutch}")
+    gear = info.LastTele.mVehicles[0].mGear  # -1 to 6
+    print(f"API version: {version if version else 'unknown'}\n"
+          f"Gear: {gear}\nClutch position: {clutch}")
 
-    info.stopUpdating()  # stop sharedmemory synced player data updating thread
+    info.stopUpdating()
