@@ -43,51 +43,43 @@ class SimInfoSync:
         self.copy_mmap()
         self._logger.info("sharedmemory mapping started")
 
-    def linux_mmap(self, name, size):
+    @staticmethod
+    def linux_mmap(name, size):
         """ Linux memory mapping """
-        file = open(name, "a+")
+        file = open("/dev/shm/" + name, "a+")
         if file.tell() == 0:
             file.write("\0" * size)
             file.flush()
-
         return mmap.mmap(file.fileno(), size)
+
+    def platform_mmap(self, name, size, pid=""):
+        """ Platform memory mapping """
+        if platform.system() == "Windows":
+            return mmap.mmap(-1, size, f"{name}{pid}")
+        # Linux platform
+        return self.linux_mmap(name, size)
 
     def start_mmap(self):
         """ Start memory mapping """
-        if platform.system() == "Windows":
-            self._rf2_tele = mmap.mmap(
-                -1, ctypes.sizeof(rF2data.rF2Telemetry),
-                f"$rFactor2SMMP_Telemetry${self._input_pid}"
-            )
-            self._rf2_scor = mmap.mmap(
-                -1, ctypes.sizeof(rF2data.rF2Scoring),
-                f"$rFactor2SMMP_Scoring${self._input_pid}"
-            )
-            self._rf2_ext = mmap.mmap(
-                -1, ctypes.sizeof(rF2data.rF2Extended),
-                f"$rFactor2SMMP_Extended${self._input_pid}"
-            )
-            self._rf2_ffb = mmap.mmap(
-                -1, ctypes.sizeof(rF2data.rF2ForceFeedback),
-                "$rFactor2SMMP_ForceFeedback$"
-            )
-        else:
-            self._rf2_tele = self.linux_mmap(
-                "/dev/shm/$rFactor2SMMP_Telemetry$",
-                ctypes.sizeof(rF2data.rF2Telemetry)
-            )
-            self._rf2_scor = self.linux_mmap(
-                "/dev/shm/$rFactor2SMMP_Scoring$",
-                ctypes.sizeof(rF2data.rF2Scoring)
-            )
-            self._rf2_ext = self.linux_mmap(
-                "/dev/shm/$rFactor2SMMP_Extended$",
-                ctypes.sizeof(rF2data.rF2Extended)
-            )
-            self._rf2_ffb = self.linux_mmap(
-                "/dev/shm/$rFactor2SMMP_ForceFeedback$",
-                ctypes.sizeof(rF2data.rF2ForceFeedback)
-            )
+        self._rf2_tele = self.platform_mmap(
+            name="$rFactor2SMMP_Telemetry$",
+            size=ctypes.sizeof(rF2data.rF2Telemetry),
+            pid=self._input_pid
+        )
+        self._rf2_scor = self.platform_mmap(
+            name="$rFactor2SMMP_Scoring$",
+            size=ctypes.sizeof(rF2data.rF2Scoring),
+            pid=self._input_pid
+        )
+        self._rf2_ext = self.platform_mmap(
+            name="$rFactor2SMMP_Extended$",
+            size=ctypes.sizeof(rF2data.rF2Extended),
+            pid=self._input_pid
+        )
+        self._rf2_ffb = self.platform_mmap(
+            name="$rFactor2SMMP_ForceFeedback$",
+            size=ctypes.sizeof(rF2data.rF2ForceFeedback)
+        )
 
     def copy_mmap(self):
         """ Copy memory mapping data """
@@ -235,16 +227,16 @@ class SimInfoSync:
 
     @staticmethod
     def cbytes2str(bytestring):
-        """Convert bytes to string"""
+        """ Convert bytes to string """
         if type(bytestring) == bytes:
-            return bytestring.decode().rstrip()
+            return bytestring.decode(errors="replace").rstrip()
         return ""
 
     def __del__(self):
         self.close()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Example usage
     info = SimInfoSync()
     info.startUpdating()
@@ -254,5 +246,4 @@ if __name__ == '__main__':
     gear = info.LastTele.mVehicles[0].mGear  # -1 to 6
     print(f"API version: {version if version else 'unknown'}\n"
           f"Gear: {gear}\nClutch position: {clutch}")
-
     info.stopUpdating()
