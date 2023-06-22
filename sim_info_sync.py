@@ -63,14 +63,23 @@ class rF2MMap:
         self._logger.info("sharedmemory mapping started")
 
     def copy_mmap(self):
-        """Copy memory mapping data"""
+        """Copy memory mapping data
+
+        Accessing shared memory data by using buffer_copy on mmap data instance,
+        which ensures that orginal constantly updated mmap instance
+        would not unexpectedly interrupt data verification and synchronizing.
+        """
         self._data_scor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
         self._data_tele = rF2data.rF2Telemetry.from_buffer_copy(self._rf2_tele)
         self._data_ext = rF2data.rF2Extended.from_buffer_copy(self._rf2_ext)
         self._data_ffb = rF2data.rF2ForceFeedback.from_buffer_copy(self._rf2_ffb)
 
     def copy_mmap_player(self):
-        """Copy memory mapping player data"""
+        """Copy memory mapping player data
+
+        Maintain a separate copy of synchronized local player's data
+        which avoids data interruption or desync in case of player index changes.
+        """
         self._player_scor = copy.deepcopy(self._data_scor.mVehicles[INVALID_INDEX])
         self._player_tele = copy.deepcopy(self._data_tele.mVehicles[INVALID_INDEX])
 
