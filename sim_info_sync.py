@@ -62,10 +62,21 @@ class rF2MMap:
         )
         self._logger.info("sharedmemory mapping started")
 
+    def direct_access_mmap(self):
+        """Direct access memory mapping data
+
+        Direct accessing mmap data instance by using from_buffer.
+        This may result unexpected data interruption or desync issue.
+        """
+        self._data_scor = rF2data.rF2Scoring.from_buffer(self._rf2_scor)
+        self._data_tele = rF2data.rF2Telemetry.from_buffer(self._rf2_tele)
+        self._data_ext = rF2data.rF2Extended.from_buffer(self._rf2_ext)
+        self._data_ffb = rF2data.rF2ForceFeedback.from_buffer(self._rf2_ffb)
+
     def copy_mmap(self):
         """Copy memory mapping data
 
-        Accessing shared memory data by using buffer_copy on mmap data instance,
+        Accessing shared memory data by using from_buffer_copy on mmap data instance,
         which ensures that orginal constantly updated mmap instance
         would not unexpectedly interrupt data verification and synchronizing.
         """
@@ -260,7 +271,10 @@ class SimInfoSync(rF2MMap):
         self._logger.info("sharedmemory data updating thread stopped")
 
     def start(self):
-        """Start data updating thread"""
+        """Start data updating thread
+
+        Update & sync mmap data copy in separate thread.
+        """
         if not self._stopped:
             return None
         self.start_mmap()
