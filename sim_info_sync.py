@@ -131,22 +131,49 @@ class SimInfoSync(rF2MMap):
         self._paused = True
         self._player_scor_index = INVALID_INDEX
         self._player_tele_index = INVALID_INDEX
+        self._player_scor_mid = 0
 
-    def __local_player_data(self, data_scor, data_tele):
-        """Get local player data"""
+    @staticmethod
+    def __find_local_scor_index(data_scor):
+        """Find local player scoring index"""
         for idx_scor in range(MAX_VEHICLES):
             if data_scor.mVehicles[idx_scor].mIsPlayer:
-                self._player_scor_index = idx_scor
-                self._player_scor = copy.deepcopy(data_scor.mVehicles[idx_scor])
-                mid_scor = data_scor.mVehicles[idx_scor].mID
+                return idx_scor
+        return INVALID_INDEX
 
-                for idx_tele in range(MAX_VEHICLES):
-                    if data_tele.mVehicles[idx_tele].mID == mid_scor:
-                        self._player_tele_index = idx_tele
-                        self._player_tele = copy.deepcopy(data_tele.mVehicles[idx_tele])
-                        return True
-                return True
-        return False
+    @staticmethod
+    def __find_local_tele_index(data_tele, mid_scor):
+        """Find local player telemetry index
+
+        Telemetry index can be different from scoring index.
+        Use mID matching to find telemetry index.
+        """
+        for idx_tele in range(MAX_VEHICLES):
+            if data_tele.mVehicles[idx_tele].mID == mid_scor:
+                return idx_tele
+        return INVALID_INDEX
+
+    def __sync_local_player_data(self, data_scor, data_tele):
+        """Sync local player data
+
+        1. Find scoring index, break if not found.
+        2. Update scoring index, mID, copy scoring data.
+        3. Find telemetry index, break if not found.
+        4. Update telemetry index, copy telemetry data.
+        """
+        idx_scor = self.__find_local_scor_index(data_scor)
+        if idx_scor == INVALID_INDEX:
+            return False
+        self._player_scor_index = idx_scor
+        self._player_scor_mid = data_scor.mVehicles[idx_scor].mID
+        self._player_scor = copy.deepcopy(data_scor.mVehicles[idx_scor])
+
+        idx_tele = self.__find_local_tele_index(data_tele, self._player_scor_mid)
+        if idx_tele == INVALID_INDEX:
+            return True  # found 1 index
+        self._player_tele_index = idx_tele
+        self._player_tele = copy.deepcopy(data_tele.mVehicles[idx_tele])
+        return True  # found 2 index
 
     def find_player_index_tele(self, index_scor):
         """Find player index using mID"""
@@ -170,18 +197,22 @@ class SimInfoSync(rF2MMap):
         update_delay = 0.5  # longer delay while inactive
 
         while self._updating:
-            self.copy_mmap()
+            data_scor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
+            data_tele = rF2data.rF2Telemetry.from_buffer_copy(self._rf2_tele)
+            self._data_ext = rF2data.rF2Extended.from_buffer_copy(self._rf2_ext)
+            self._data_ffb = rF2data.rF2ForceFeedback.from_buffer_copy(self._rf2_ffb)
             # Update player data & index
             if (not data_freezed
-                and self.ver_check(self._data_scor)
-                and self.ver_check(self._data_tele)):
+                and self.ver_check(data_scor)
+                and self.ver_check(data_tele)):
+                self._data_scor = data_scor
+                self._data_tele = data_tele
                 # Get player data
-                player_data = self.__local_player_data(
-                    self._data_scor, self._data_tele)
+                data_synced = self.__sync_local_player_data(data_scor, data_tele)
                 # Pause if local player index no longer exists, 5 tries
-                if not player_data and reset_counter < 6:
+                if not data_synced and reset_counter < 6:
                     reset_counter += 1
-                elif player_data:
+                elif data_synced:
                     reset_counter = 0
                     self._paused = False
                 # Activate pause
@@ -192,7 +223,7 @@ class SimInfoSync(rF2MMap):
             # Start checking data version update status
             if time.time() - check_timer_start > 5:
                 if (not data_freezed
-                    and last_version_update == self._data_scor.mVersionUpdateEnd):
+                    and last_version_update == data_scor.mVersionUpdateEnd):
                     update_delay = 0.5
                     data_freezed = True
                     self._paused = True
@@ -200,17 +231,17 @@ class SimInfoSync(rF2MMap):
                         "sharedmemory mapping data paused, version %s",
                         last_version_update
                     )
-                last_version_update = self._data_scor.mVersionUpdateEnd
+                last_version_update = data_scor.mVersionUpdateEnd
                 check_timer_start = time.time()  # reset timer
 
             if (data_freezed
-                and last_version_update != self._data_scor.mVersionUpdateEnd):
+                and last_version_update != data_scor.mVersionUpdateEnd):
+                update_delay = 0.01
                 data_freezed = False
                 self._paused = False
-                update_delay = 0.01
                 self._logger.info(
                     "sharedmemory mapping data unpaused, version %s",
-                    self._data_scor.mVersionUpdateEnd
+                    data_scor.mVersionUpdateEnd
                 )
 
             time.sleep(update_delay)
