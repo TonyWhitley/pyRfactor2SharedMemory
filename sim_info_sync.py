@@ -23,87 +23,76 @@ INVALID_INDEX = -1
 
 
 class rF2MMap:
-    """Create mmap for accessing rF2 shared memory"""
+    """Create mmap for accessing rF2 shared memory
 
-    def __init__(self, logger=__name__):
+    mmap_name: mmap filename, ex. $rFactor2SMMP_Scoring$
+    rf2_data: rf2 data class defined in rF2data.py, ex. rF2data.rF2Scoring
+    rf2_pid: rf2 Process ID for server
+    logger: logger name
+    """
+
+    def __init__(self, mmap_name, rf2_data, rf2_pid="", logger=__name__):
         self._logger = logging.getLogger(logger)
-        self._rf2_pid = ""
-        self._rf2_scor = None
-        self._rf2_tele = None
-        self._rf2_ext = None
-        self._rf2_ffb = None
-        self._data_scor = None
-        self._data_tele = None
-        self._data_ext = None
-        self._data_ffb = None
-        self._player_scor = None
-        self._player_tele = None
+        self._mmap_name = mmap_name
+        self._rf2_data = rf2_data
+        self._rf2_pid = rf2_pid
+        self._mmap_inst = None
+        self._mmap_data = None
+        self._direct_access_active = False
 
-    def start_mmap(self):
-        """Start memory mapping"""
-        self._rf2_scor = self.platform_mmap(
-            name="$rFactor2SMMP_Scoring$",
-            size=ctypes.sizeof(rF2data.rF2Scoring),
+    def create(self, access_mode=0):
+        """Create mmap instance"""
+        self._mmap_inst = self.platform_mmap(
+            name=self._mmap_name,
+            size=ctypes.sizeof(self._rf2_data),
             pid=self._rf2_pid
         )
-        self._rf2_tele = self.platform_mmap(
-            name="$rFactor2SMMP_Telemetry$",
-            size=ctypes.sizeof(rF2data.rF2Telemetry),
-            pid=self._rf2_pid
+        mode_text = "Direct" if access_mode else "Copy"
+        self._logger.info(
+            "sharedmemory - %s > ACTIVE: %s Access",
+            self._mmap_name.strip("$"), mode_text
         )
-        self._rf2_ext = self.platform_mmap(
-            name="$rFactor2SMMP_Extended$",
-            size=ctypes.sizeof(rF2data.rF2Extended),
-            pid=self._rf2_pid
-        )
-        self._rf2_ffb = self.platform_mmap(
-            name="$rFactor2SMMP_ForceFeedback$",
-            size=ctypes.sizeof(rF2data.rF2ForceFeedback),
-        )
-        self._logger.info("sharedmemory mapping started")
 
-    def direct_access_mmap(self):
-        """Direct access memory mapping data
+    def close(self):
+        """Close memory mapping
 
-        Direct accessing mmap data instance by using from_buffer.
-        This may result unexpected data interruption or desync issue.
+        Create a final accessible mmap data copy before closing mmap instance.
         """
-        self._data_scor = rF2data.rF2Scoring.from_buffer(self._rf2_scor)
-        self._data_tele = rF2data.rF2Telemetry.from_buffer(self._rf2_tele)
-        self._data_ext = rF2data.rF2Extended.from_buffer(self._rf2_ext)
-        self._data_ffb = rF2data.rF2ForceFeedback.from_buffer(self._rf2_ffb)
-
-    def copy_mmap(self):
-        """Copy memory mapping data
-
-        Accessing shared memory data by using from_buffer_copy on mmap data instance,
-        which ensures that orginal constantly updated mmap instance
-        would not unexpectedly interrupt data verification and synchronizing.
-        """
-        self._data_scor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
-        self._data_tele = rF2data.rF2Telemetry.from_buffer_copy(self._rf2_tele)
-        self._data_ext = rF2data.rF2Extended.from_buffer_copy(self._rf2_ext)
-        self._data_ffb = rF2data.rF2ForceFeedback.from_buffer_copy(self._rf2_ffb)
-
-    def copy_mmap_player(self):
-        """Copy memory mapping player data
-
-        Maintain a separate copy of synchronized local player's data
-        which avoids data interruption or desync in case of player index changes.
-        """
-        self._player_scor = copy.deepcopy(self._data_scor.mVehicles[INVALID_INDEX])
-        self._player_tele = copy.deepcopy(self._data_tele.mVehicles[INVALID_INDEX])
-
-    def close_mmap(self):
-        """Close memory mapping"""
+        self.copy_access()
+        self._direct_access_active = False
         try:
-            self._rf2_tele.close()
-            self._rf2_scor.close()
-            self._rf2_ext.close()
-            self._rf2_ffb.close()
-            self._logger.info("sharedmemory mapping closed")
-        except BufferError:  # "cannot close exported pointers exist"
-            self._logger.error("failed to close mmap")
+            self._mmap_inst.close()
+            self._logger.info("sharedmemory - %s > CLOSE", self._mmap_name.strip("$"))
+        except BufferError:
+            self._logger.error("sharedmemory - failed to close mmap")
+
+    @staticmethod
+    def version_check(data):
+        """Data version check"""
+        return data.mVersionUpdateEnd == data.mVersionUpdateBegin
+
+    def direct_access(self):
+        """Direct access memory map
+
+        Direct accessing mmap data instance.
+        May result data desync or interruption.
+        """
+        if self._direct_access_active:
+            return None
+        self._mmap_data = self._rf2_data.from_buffer(self._mmap_inst)
+        self._direct_access_active = True
+
+    def copy_access(self):
+        """Copy access memory map
+
+        Accessing mmap data by copying mmap instance
+        and using version check to avoid data desync or interruption.
+        """
+        data_temp = self._rf2_data.from_buffer_copy(self._mmap_inst)
+        if self.version_check(data_temp):
+            self._mmap_data = data_temp
+        elif not self._mmap_data:
+            self._mmap_data = data_temp
 
     def platform_mmap(self, name, size, pid=""):
         """Platform memory mapping"""
@@ -126,25 +115,23 @@ class rF2MMap:
         return mmap.mmap(file.fileno(), size)
 
     @property
-    def rf2PID(self):
-        """rF2 process id"""
-        return self._rf2_pid
-
-    @rf2PID.setter
-    def rf2PID(self, pid):
-        """Set rF2 process id"""
-        self._rf2_pid = pid
+    def data(self):
+        """Access rF2 mmap data"""
+        return self._mmap_data
 
 
-class SimInfoSync(rF2MMap):
+class SimInfoSync():
     """
     API for rF2 shared memory
 
     Player-Synced data.
+    Access mode: 0 = copy access, 1 = direct access
     """
 
-    def __init__(self, logger=__name__):
-        super().__init__(logger)
+    def __init__(self, access_mode=0, rf2_pid="", logger=__name__):
+        self._access_mode = access_mode
+        self._logger = logging.getLogger(logger)
+
         self._stopped = True
         self._updating = False
         self._restarting = False
@@ -152,6 +139,7 @@ class SimInfoSync(rF2MMap):
         self._player_scor_index = INVALID_INDEX
         self._player_tele_index = INVALID_INDEX
         self._player_scor_mid = 0
+        self.init_mmap(rf2_pid, logger)
 
     @staticmethod
     def __find_local_scor_index(data_scor):
@@ -197,16 +185,11 @@ class SimInfoSync(rF2MMap):
 
     def find_player_index_tele(self, index_scor):
         """Find player index using mID"""
-        scor_mid = self._data_scor.mVehicles[index_scor].mID
+        scor_mid = self._info_scor.data.mVehicles[index_scor].mID
         for index in range(MAX_VEHICLES):
-            if self._data_tele.mVehicles[index].mID == scor_mid:
+            if self._info_tele.data.mVehicles[index].mID == scor_mid:
                 return index
         return INVALID_INDEX
-
-    @staticmethod
-    def ver_check(data):
-        """Update version check"""
-        return data.mVersionUpdateEnd == data.mVersionUpdateBegin
 
     def __update(self):
         """Update synced player data"""
@@ -217,18 +200,12 @@ class SimInfoSync(rF2MMap):
         update_delay = 0.5  # longer delay while inactive
 
         while self._updating:
-            data_scor = rF2data.rF2Scoring.from_buffer_copy(self._rf2_scor)
-            data_tele = rF2data.rF2Telemetry.from_buffer_copy(self._rf2_tele)
-            self._data_ext = rF2data.rF2Extended.from_buffer_copy(self._rf2_ext)
-            self._data_ffb = rF2data.rF2ForceFeedback.from_buffer_copy(self._rf2_ffb)
+            self.update_mmap()
             # Update player data & index
-            if (not data_freezed
-                and self.ver_check(data_scor)
-                and self.ver_check(data_tele)):
-                self._data_scor = data_scor
-                self._data_tele = data_tele
+            if not data_freezed:
                 # Get player data
-                data_synced = self.__sync_local_player_data(data_scor, data_tele)
+                data_synced = self.__sync_local_player_data(
+                    self._info_scor.data, self._info_tele.data)
                 # Pause if local player index no longer exists, 5 tries
                 if not data_synced and reset_counter < 6:
                     reset_counter += 1
@@ -238,37 +215,37 @@ class SimInfoSync(rF2MMap):
                 # Activate pause
                 if reset_counter == 5:
                     self._paused = True
-                    self._logger.info("sharedmemory mapping player data paused")
+                    self._logger.info("sharedmemory - player data paused")
 
             # Start checking data version update status
             if time.time() - check_timer_start > 5:
                 if (not data_freezed
-                    and last_version_update == data_scor.mVersionUpdateEnd):
+                    and last_version_update == self._info_scor.data.mVersionUpdateEnd):
                     update_delay = 0.5
                     data_freezed = True
                     self._paused = True
                     self._logger.info(
-                        "sharedmemory mapping data paused, version %s",
+                        "sharedmemory - data paused, version %s",
                         last_version_update
                     )
-                last_version_update = data_scor.mVersionUpdateEnd
+                last_version_update = self._info_scor.data.mVersionUpdateEnd
                 check_timer_start = time.time()  # reset timer
 
             if (data_freezed
-                and last_version_update != data_scor.mVersionUpdateEnd):
+                and last_version_update != self._info_scor.data.mVersionUpdateEnd):
                 update_delay = 0.01
                 data_freezed = False
                 self._paused = False
                 self._logger.info(
-                    "sharedmemory mapping data unpaused, version %s",
-                    data_scor.mVersionUpdateEnd
+                    "sharedmemory - data unpaused, version %s",
+                    self._info_scor.data.mVersionUpdateEnd
                 )
 
             time.sleep(update_delay)
 
         self._stopped = True
         self._paused = False
-        self._logger.info("sharedmemory data updating thread stopped")
+        self._logger.info("sharedmemory - updating thread stopped")
 
     def start(self):
         """Start data updating thread
@@ -277,14 +254,15 @@ class SimInfoSync(rF2MMap):
         """
         if not self._stopped:
             return None
-        self.start_mmap()
-        self.copy_mmap()
+
+        self.create_mmap()
+        self.update_mmap()
         self.copy_mmap_player()
         self._updating = True
         self._stopped = False
         self._thread = threading.Thread(target=self.__update, daemon=True)
         self._thread.start()
-        self._logger.info("sharedmemory data updating thread started")
+        self._logger.info("sharedmemory - updating thread started")
 
     def stop(self):
         """Stop data updating thread"""
@@ -292,8 +270,9 @@ class SimInfoSync(rF2MMap):
         self._thread.join()
         self.close_mmap()
 
-    def restart(self):
-        """Redtart data updating thread"""
+    def restart(self, access_mode=0):
+        """Restart data updating thread"""
+        self._access_mode = access_mode
         if self._restarting:
             return None
         self._restarting = True
@@ -301,25 +280,72 @@ class SimInfoSync(rF2MMap):
         self.start()
         self._restarting = False
 
+    def init_mmap(self, rf2_pid, logger):
+        """Initialize mmap info"""
+        self._info_scor = rF2MMap(
+            "$rFactor2SMMP_Scoring$",rF2data.rF2Scoring, rf2_pid, logger)
+        self._info_tele = rF2MMap(
+            "$rFactor2SMMP_Telemetry$", rF2data.rF2Telemetry, rf2_pid, logger)
+        self._info_ext = rF2MMap(
+            "$rFactor2SMMP_Extended$", rF2data.rF2Extended, rf2_pid, logger)
+        self._info_ffb = rF2MMap(
+            "$rFactor2SMMP_ForceFeedback$", rF2data.rF2ForceFeedback, "", logger)
+
+    def create_mmap(self):
+        """Create mmap instance"""
+        self._info_scor.create(self._access_mode)
+        self._info_tele.create(self._access_mode)
+        self._info_ext.create(self._access_mode)
+        self._info_ffb.create(self._access_mode)
+
+    def close_mmap(self):
+        """Close mmap instance"""
+        self._info_scor.close()
+        self._info_tele.close()
+        self._info_ext.close()
+        self._info_ffb.close()
+
+    def update_mmap(self):
+        """Update mmap data"""
+        if self._access_mode:
+            self._info_scor.direct_access()
+            self._info_tele.direct_access()
+            self._info_ext.direct_access()
+            self._info_ffb.direct_access()
+        else:
+            self._info_scor.copy_access()
+            self._info_tele.copy_access()
+            self._info_ext.copy_access()
+            self._info_ffb.copy_access()
+
+    def copy_mmap_player(self):
+        """Copy memory mapping player data
+
+        Maintain a separate copy of synchronized local player's data
+        which avoids data interruption or desync in case of player index changes.
+        """
+        self._player_scor = copy.deepcopy(self._info_scor.data.mVehicles[INVALID_INDEX])
+        self._player_tele = copy.deepcopy(self._info_tele.data.mVehicles[INVALID_INDEX])
+
     @property
     def rf2Scor(self):
         """rF2 vehicle scoring data"""
-        return self._data_scor
+        return self._info_scor.data
 
     @property
     def rf2Tele(self):
         """rF2 vehicle telemetry data"""
-        return self._data_tele
+        return self._info_tele.data
 
     @property
     def rf2Ext(self):
         """rF2 extended data"""
-        return self._data_ext
+        return self._info_ext.data
 
     @property
     def rf2Ffb(self):
         """rF2 force feedback data"""
-        return self._data_ffb
+        return self._info_ffb.data
 
     @property
     def playerTele(self):
@@ -362,7 +388,7 @@ if __name__ == "__main__":
     logger.addHandler(test_handler)
 
     # Example usage
-    info = SimInfoSync(__name__)
+    info = SimInfoSync(access_mode=0, logger=__name__)
     info.start()
     time.sleep(0.5)
     version = info.cbytes2str(info.rf2Ext.mVersion)
