@@ -31,21 +31,22 @@ class rF2MMap:
     logger: logger name
     """
 
-    def __init__(self, mmap_name, rf2_data, rf2_pid="", logger=__name__):
+    def __init__(self, mmap_name, rf2_data, logger=__name__):
         self._logger = logging.getLogger(logger)
         self._mmap_name = mmap_name
         self._rf2_data = rf2_data
-        self._rf2_pid = rf2_pid
         self._mmap_inst = None
         self._mmap_data = None
+        self._access_mode = 0
         self._direct_access_active = False
 
-    def create(self, access_mode=0):
+    def create(self, access_mode=0, rf2_pid=""):
         """Create mmap instance"""
+        self._access_mode = access_mode
         self._mmap_inst = self.platform_mmap(
             name=self._mmap_name,
             size=ctypes.sizeof(self._rf2_data),
-            pid=self._rf2_pid
+            pid=rf2_pid
         )
         mode_text = "Direct" if access_mode else "Copy"
         self._logger.info(
@@ -114,6 +115,13 @@ class rF2MMap:
             file.flush()
         return mmap.mmap(file.fileno(), size)
 
+    def update(self):
+        """Update rF2 mmap data"""
+        if self._access_mode:
+            self.direct_access()
+        else:
+            self.copy_access()
+
     @property
     def data(self):
         """Access rF2 mmap data"""
@@ -128,10 +136,7 @@ class SimInfoSync():
     Access mode: 0 = copy access, 1 = direct access
     """
 
-    def __init__(self, access_mode=0, rf2_pid="", logger=__name__):
-        self._access_mode = access_mode
-        self._logger = logging.getLogger(logger)
-
+    def __init__(self, logger=__name__):
         self._stopped = True
         self._updating = False
         self._restarting = False
@@ -139,7 +144,10 @@ class SimInfoSync():
         self._player_scor_index = INVALID_INDEX
         self._player_tele_index = INVALID_INDEX
         self._player_scor_mid = 0
-        self.init_mmap(rf2_pid, logger)
+        self._rf2_pid = ""
+        self._access_mode = 0
+        self._logger = logging.getLogger(logger)
+        self.init_mmap(logger)
 
     @staticmethod
     def __find_local_scor_index(data_scor):
@@ -270,9 +278,8 @@ class SimInfoSync():
         self._thread.join()
         self.close_mmap()
 
-    def restart(self, access_mode=0):
+    def restart(self):
         """Restart data updating thread"""
-        self._access_mode = access_mode
         if self._restarting:
             return None
         self._restarting = True
@@ -280,23 +287,23 @@ class SimInfoSync():
         self.start()
         self._restarting = False
 
-    def init_mmap(self, rf2_pid, logger):
+    def init_mmap(self, logger):
         """Initialize mmap info"""
         self._info_scor = rF2MMap(
-            "$rFactor2SMMP_Scoring$",rF2data.rF2Scoring, rf2_pid, logger)
+            "$rFactor2SMMP_Scoring$", rF2data.rF2Scoring, logger)
         self._info_tele = rF2MMap(
-            "$rFactor2SMMP_Telemetry$", rF2data.rF2Telemetry, rf2_pid, logger)
+            "$rFactor2SMMP_Telemetry$", rF2data.rF2Telemetry, logger)
         self._info_ext = rF2MMap(
-            "$rFactor2SMMP_Extended$", rF2data.rF2Extended, rf2_pid, logger)
+            "$rFactor2SMMP_Extended$", rF2data.rF2Extended, logger)
         self._info_ffb = rF2MMap(
-            "$rFactor2SMMP_ForceFeedback$", rF2data.rF2ForceFeedback, "", logger)
+            "$rFactor2SMMP_ForceFeedback$", rF2data.rF2ForceFeedback, logger)
 
     def create_mmap(self):
         """Create mmap instance"""
-        self._info_scor.create(self._access_mode)
-        self._info_tele.create(self._access_mode)
-        self._info_ext.create(self._access_mode)
-        self._info_ffb.create(self._access_mode)
+        self._info_scor.create(self._access_mode, self._rf2_pid)
+        self._info_tele.create(self._access_mode, self._rf2_pid)
+        self._info_ext.create(self._access_mode, self._rf2_pid)
+        self._info_ffb.create(self._access_mode, self._rf2_pid)
 
     def close_mmap(self):
         """Close mmap instance"""
@@ -307,16 +314,10 @@ class SimInfoSync():
 
     def update_mmap(self):
         """Update mmap data"""
-        if self._access_mode:
-            self._info_scor.direct_access()
-            self._info_tele.direct_access()
-            self._info_ext.direct_access()
-            self._info_ffb.direct_access()
-        else:
-            self._info_scor.copy_access()
-            self._info_tele.copy_access()
-            self._info_ext.copy_access()
-            self._info_ffb.copy_access()
+        self._info_scor.update()
+        self._info_tele.update()
+        self._info_ext.update()
+        self._info_ffb.update()
 
     def copy_mmap_player(self):
         """Copy memory mapping player data
@@ -326,6 +327,14 @@ class SimInfoSync():
         """
         self._player_scor = copy.deepcopy(self._info_scor.data.mVehicles[INVALID_INDEX])
         self._player_tele = copy.deepcopy(self._info_tele.data.mVehicles[INVALID_INDEX])
+
+    def setPID(self, pid=""):
+        """Set rf2 PID"""
+        self._rf2_pid = pid
+
+    def setMode(self, mode=0):
+        """Set rf2 mmap access mode"""
+        self._access_mode = mode
 
     @property
     def rf2Scor(self):
