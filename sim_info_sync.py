@@ -141,6 +141,7 @@ class SimInfoSync():
         self._updating = False
         self._restarting = False
         self._paused = True
+        self._override_player_index = False
         self._player_scor_index = INVALID_INDEX
         self._player_tele_index = INVALID_INDEX
         self._player_scor_mid = 0
@@ -177,12 +178,13 @@ class SimInfoSync():
         3. Find telemetry index, break if not found.
         4. Update telemetry index, copy telemetry data.
         """
-        idx_scor = self.__find_local_scor_index(data_scor)
-        if idx_scor == INVALID_INDEX:
-            return False
-        self._player_scor_index = idx_scor
-        self._player_scor_mid = data_scor.mVehicles[idx_scor].mID
-        self._player_scor = copy.deepcopy(data_scor.mVehicles[idx_scor])
+        if not self._override_player_index:
+            idx_scor = self.__find_local_scor_index(data_scor)
+            if idx_scor == INVALID_INDEX:
+                return False
+            self._player_scor_index = idx_scor
+        self._player_scor_mid = data_scor.mVehicles[self._player_scor_index].mID
+        self._player_scor = copy.deepcopy(data_scor.mVehicles[self._player_scor_index])
 
         idx_tele = self.__find_local_tele_index(data_tele, self._player_scor_mid)
         if idx_tele == INVALID_INDEX:
@@ -271,6 +273,9 @@ class SimInfoSync():
         self._thread = threading.Thread(target=self.__update, daemon=True)
         self._thread.start()
         self._logger.info("sharedmemory - updating thread started")
+        self._logger.info(
+            "sharedmemory - player index override: %s",
+            self._override_player_index)
 
     def stop(self):
         """Stop data updating thread"""
@@ -335,6 +340,20 @@ class SimInfoSync():
     def setMode(self, mode=0):
         """Set rf2 mmap access mode"""
         self._access_mode = mode
+
+    def setPlayerOverride(self, state=False):
+        """Set player index override state"""
+        self._override_player_index = state
+
+    def setPlayerIndex(self, idx=INVALID_INDEX):
+        """Set player index"""
+        self._player_scor_index = idx
+
+    def isPlayer(self, idx):
+        """Check whether index is player"""
+        if self._override_player_index:
+            return self._player_scor_index == idx
+        return self._info_scor.data.mVehicles[idx].mIsPlayer
 
     @property
     def rf2Scor(self):
