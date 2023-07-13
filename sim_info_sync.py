@@ -397,7 +397,9 @@ if __name__ == "__main__":
     logger.addHandler(test_handler)
 
     # Example usage
-    info = SimInfoSync(access_mode=0, logger=__name__)
+    info = SimInfoSync(logger=__name__)
+    info.setMode(0) # optional, can be omitted
+    info.setPID("") # optional, can be omitted
     info.start()
     time.sleep(0.5)
     version = info.cbytes2str(info.rf2Ext.mVersion)
