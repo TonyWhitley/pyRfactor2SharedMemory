@@ -410,13 +410,6 @@ class SimInfoSync():
         """Check whether data stopped updating"""
         return self._paused
 
-    @staticmethod
-    def cbytes2str(bytestring):
-        """Convert bytes to string"""
-        if type(bytestring) == bytes:
-            return bytestring.decode(errors="replace").rstrip()
-        return ""
-
 
 if __name__ == "__main__":
     # Add logger
@@ -431,7 +424,7 @@ if __name__ == "__main__":
     info.setPID("") # optional, can be omitted
     info.start()
     time.sleep(0.5)
-    version = info.cbytes2str(info.rf2Ext.mVersion)
+    version = info.rf2Ext.mVersion
     clutch = info.rf2TeleVeh(0).mUnfilteredClutch # 1.0 clutch down, 0 clutch up
     gear = info.rf2TeleVeh(0).mGear  # -1 to 6
     print(f"API version: {version if version else 'unknown'}\n"
