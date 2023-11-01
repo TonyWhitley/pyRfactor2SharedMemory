@@ -1,8 +1,9 @@
 """
-sharedMemoryAPI with player-synced methods
+rF2 Memory Map & Shared Memory API accessing
 
-Inherit Python mapping of The Iron Wolf's rF2 Shared Memory Tools
-and add access functions to it.
+Inherit Python mapping of The Iron Wolf's rF2 Shared Memory Tools,
+with cross-platform (Linux) support,
+and add access & synchronize functions to it.
 """
 import ctypes
 import mmap
