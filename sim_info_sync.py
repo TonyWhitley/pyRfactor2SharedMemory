@@ -357,12 +357,12 @@ class SimInfoSync():
 
     @property
     def rf2Scor(self):
-        """rF2 vehicle scoring data"""
+        """rF2 scoring data"""
         return self._info_scor.data
 
     @property
     def rf2Tele(self):
-        """rF2 vehicle telemetry data"""
+        """rF2 telemetry data"""
         return self._info_tele.data
 
     @property
@@ -375,15 +375,25 @@ class SimInfoSync():
         """rF2 force feedback data"""
         return self._info_ffb.data
 
-    @property
-    def playerTele(self):
-        """rF2 local player's vehicle telemetry data"""
-        return self._player_tele
+    def rf2ScorVeh(self, index: int = None):
+        """rF2 vehicle scoring data
 
-    @property
-    def playerScor(self):
-        """rF2 local player's vehicle scoring data"""
-        return self._player_scor
+        Specify index for specific player.
+        None for local player.
+        """
+        if index is None:
+            return self._player_scor
+        return self._info_scor.data.mVehicles[index]
+
+    def rf2TeleVeh(self, index: int = None):
+        """rF2 vehicle telemetry data
+
+        Specify index for specific player.
+        None for local player.
+        """
+        if index is None:
+            return self._player_tele
+        return self._info_tele.data.mVehicles[index]
 
     @property
     def playerTeleIndex(self):
@@ -422,8 +432,8 @@ if __name__ == "__main__":
     info.start()
     time.sleep(0.5)
     version = info.cbytes2str(info.rf2Ext.mVersion)
-    clutch = info.rf2Tele.mVehicles[0].mUnfilteredClutch # 1.0 clutch down, 0 clutch up
-    gear = info.rf2Tele.mVehicles[0].mGear  # -1 to 6
+    clutch = info.rf2TeleVeh(0).mUnfilteredClutch # 1.0 clutch down, 0 clutch up
+    gear = info.rf2TeleVeh(0).mGear  # -1 to 6
     print(f"API version: {version if version else 'unknown'}\n"
           f"Gear: {gear}\nClutch position: {clutch}")
     print("Test - API restart")
