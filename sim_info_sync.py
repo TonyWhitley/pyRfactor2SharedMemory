@@ -152,20 +152,31 @@ class SimInfoSync():
         self.init_mmap(logger)
 
     @staticmethod
-    def __find_local_scor_index(data_scor):
-        """Find local player scoring index"""
+    def __find_local_scor_index(data_scor, idx_last):
+        """Find local player scoring index
+
+        Check last found index first.
+        If is not player, loop through all vehicles.
+        """
+        if data_scor.mVehicles[idx_last].mIsPlayer:
+            return idx_last
         for idx_scor in range(MAX_VEHICLES):
             if data_scor.mVehicles[idx_scor].mIsPlayer:
                 return idx_scor
         return INVALID_INDEX
 
     @staticmethod
-    def __find_local_tele_index(data_tele, mid_scor):
-        """Find local player telemetry index
+    def __sync_local_tele_index(data_tele, idx_scor, mid_scor):
+        """Sync local player telemetry index
 
         Telemetry index can be different from scoring index.
         Use mID matching to find telemetry index.
+
+        Compare scor mid with tele mid first.
+        If not same, loop through all vehicles.
         """
+        if data_tele.mVehicles[idx_scor].mID == mid_scor:
+            return idx_scor
         for idx_tele in range(MAX_VEHICLES):
             if data_tele.mVehicles[idx_tele].mID == mid_scor:
                 return idx_tele
@@ -180,26 +191,33 @@ class SimInfoSync():
         4. Update telemetry index, copy telemetry data.
         """
         if not self._override_player_index:
-            idx_scor = self.__find_local_scor_index(data_scor)
+            idx_scor = self.__find_local_scor_index(data_scor, self._player_scor_index)
             if idx_scor == INVALID_INDEX:
                 return False
             self._player_scor_index = idx_scor
         self._player_scor_mid = data_scor.mVehicles[self._player_scor_index].mID
         self._player_scor = copy.deepcopy(data_scor.mVehicles[self._player_scor_index])
 
-        idx_tele = self.__find_local_tele_index(data_tele, self._player_scor_mid)
+        idx_tele = self.__sync_local_tele_index(
+            data_tele, self._player_scor_index, self._player_scor_mid)
         if idx_tele == INVALID_INDEX:
             return True  # found 1 index
         self._player_tele_index = idx_tele
         self._player_tele = copy.deepcopy(data_tele.mVehicles[idx_tele])
         return True  # found 2 index
 
-    def find_player_index_tele(self, index_scor):
-        """Find player index using mID"""
-        scor_mid = self._info_scor.data.mVehicles[index_scor].mID
-        for index in range(MAX_VEHICLES):
-            if self._info_tele.data.mVehicles[index].mID == scor_mid:
-                return index
+    def sync_tele_index(self, idx_scor):
+        """Sync telemetry index with scoring index using mID
+
+        Compare scor mid with tele mid first.
+        If not same, loop through all vehicles.
+        """
+        scor_mid = self._info_scor.data.mVehicles[idx_scor].mID
+        if self._info_tele.data.mVehicles[idx_scor].mID == scor_mid:
+            return idx_scor
+        for idx_tele in range(MAX_VEHICLES):
+            if self._info_tele.data.mVehicles[idx_tele].mID == scor_mid:
+                return idx_tele
         return INVALID_INDEX
 
     def __update(self):
@@ -394,7 +412,7 @@ class SimInfoSync():
         """
         if index is None:
             return self._player_tele
-        return self._info_tele.data.mVehicles[index]
+        return self._info_tele.data.mVehicles[self.sync_tele_index(index)]
 
     @property
     def playerTeleIndex(self):
