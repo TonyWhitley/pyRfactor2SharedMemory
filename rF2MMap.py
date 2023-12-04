@@ -181,14 +181,12 @@ class SyncData:
         """Copy telemetry player data"""
         self.player_tele = copy.deepcopy(self.dataset.tele.mVehicles[index])
 
-    def __local_scor_index(self, last_idx: int) -> int:
+    def __local_scor_index(self) -> int:
         """Find local player scoring index
 
         Check last found index first.
         If not player, loop through all vehicles.
         """
-        if self.dataset.scor.mVehicles[last_idx].mIsPlayer:
-            return last_idx
         for scor_idx in range(MAX_VEHICLES):
             if self.dataset.scor.mVehicles[scor_idx].mIsPlayer:
                 return scor_idx
@@ -198,7 +196,7 @@ class SyncData:
         """Sync local player data"""
         if not self.override_player_index:
             # Update scoring index
-            scor_idx = self.__local_scor_index(self.player_scor_index)
+            scor_idx = self.__local_scor_index()
             if scor_idx == INVALID_INDEX:
                 return False  # index not found, not synced
             self.player_scor_index = scor_idx
@@ -221,8 +219,6 @@ class SyncData:
         If not same, loop through all vehicles.
         """
         scor_mid = self.dataset.scor.mVehicles[scor_idx].mID
-        if self.dataset.tele.mVehicles[scor_idx].mID == scor_mid:
-            return scor_idx
         for tele_idx in range(MAX_VEHICLES):
             if self.dataset.tele.mVehicles[tele_idx].mID == scor_mid:
                 return tele_idx
