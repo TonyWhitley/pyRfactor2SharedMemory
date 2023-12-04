@@ -44,13 +44,14 @@ class RF2MMap:
         self._buffer_sharing = False
 
     def create(self, access_mode: int = 0, rf2_pid: str = "") -> None:
-        """Create mmap instance"""
+        """Create mmap instance & initial accessible copy"""
         self._access_mode = access_mode
         self._mmap_instance = self.platform_mmap(
             name=self._mmap_name,
             size=ctypes.sizeof(self._rf2_data),
             pid=rf2_pid
         )
+        self.__buffer_copy(True)
         mode = "Direct" if access_mode else "Copy"
         logger.info("sharedmemory - ACTIVE: %s > %s Access", self.mmap_id, mode)
 
@@ -59,7 +60,7 @@ class RF2MMap:
 
         Create a final accessible mmap data copy before closing mmap instance.
         """
-        self.buffer_copy()
+        self.__buffer_copy(True)
         self._buffer_sharing = False
         try:
             self._mmap_instance.close()
@@ -67,24 +68,29 @@ class RF2MMap:
         except BufferError:
             logger.error("sharedmemory - buffer error while closing mmap")
 
-    @staticmethod
-    def is_valid(data: int) -> bool:
-        """Validate data version"""
-        return data.mVersionUpdateEnd == data.mVersionUpdateBegin
+    def update(self) -> None:
+        """Update mmap data"""
+        if self._access_mode:
+            self.__buffer_share()
+        else:
+            self.__buffer_copy()
 
-    def buffer_share(self) -> None:
+    @property
+    def data(self):
+        """Output mmap data"""
+        return self._mmap_output
+
+    def __buffer_share(self) -> None:
         """Share buffer direct access, may result desync"""
         if not self._buffer_sharing:
             self._buffer_sharing = True
             self._mmap_output = self._rf2_data.from_buffer(self._mmap_instance)
 
-    def buffer_copy(self) -> None:
+    def __buffer_copy(self, skip_check=False) -> None:
         """Copy buffer access, check version before assign"""
-        data_temp = self._rf2_data.from_buffer_copy(self._mmap_instance)
-        if self.is_valid(data_temp):
-            self._mmap_output = data_temp
-        elif not self._mmap_output:
-            self._mmap_output = data_temp
+        temp = self._rf2_data.from_buffer_copy(self._mmap_instance)
+        if temp.mVersionUpdateEnd == temp.mVersionUpdateBegin or skip_check:
+            self._mmap_output = temp
 
     def platform_mmap(self, name: str, size: int, pid: str = "") -> mmap:
         """Platform memory mapping"""
@@ -105,18 +111,6 @@ class RF2MMap:
             file.write("\0" * size)
             file.flush()
         return mmap.mmap(file.fileno(), size)
-
-    def update(self) -> None:
-        """Update mmap data"""
-        if self._access_mode:
-            self.buffer_share()
-        else:
-            self.buffer_copy()
-
-    @property
-    def data(self):
-        """Output mmap data"""
-        return self._mmap_output
 
 
 class MMapDataSet:
@@ -179,72 +173,49 @@ class SyncData:
         self.player_scor = None
         self.player_tele = None
 
-    def copy_mmap_player(self) -> None:
-        """Copy memory mapping player data
+    def copy_player_scor(self, index: int = INVALID_INDEX) -> None:
+        """Copy scoring player data"""
+        self.player_scor = copy.deepcopy(self.dataset.scor.mVehicles[index])
 
-        Maintain a separate copy of synchronized local player's data
-        which avoids data interruption or desync in case of player index changes.
-        """
-        self.player_scor = copy.deepcopy(self.dataset.scor.mVehicles[INVALID_INDEX])
-        self.player_tele = copy.deepcopy(self.dataset.tele.mVehicles[INVALID_INDEX])
+    def copy_player_tele(self, index: int = INVALID_INDEX) -> None:
+        """Copy telemetry player data"""
+        self.player_tele = copy.deepcopy(self.dataset.tele.mVehicles[index])
 
-    @staticmethod
-    def __local_scor_index(data_scor, last_idx: int) -> int:
+    def __local_scor_index(self, last_idx: int) -> int:
         """Find local player scoring index
 
         Check last found index first.
         If not player, loop through all vehicles.
         """
-        if data_scor.mVehicles[last_idx].mIsPlayer:
+        if self.dataset.scor.mVehicles[last_idx].mIsPlayer:
             return last_idx
         for scor_idx in range(MAX_VEHICLES):
-            if data_scor.mVehicles[scor_idx].mIsPlayer:
+            if self.dataset.scor.mVehicles[scor_idx].mIsPlayer:
                 return scor_idx
         return INVALID_INDEX
 
-    @staticmethod
-    def __local_tele_index(data_tele, scor_idx: int, scor_mid: int) -> int:
-        """Sync local player telemetry index
-
-        Telemetry index can be different from scoring index.
-        Use mID matching to find telemetry index.
-
-        Compare scor mid with tele mid first.
-        If not same, loop through all vehicles.
-        """
-        if data_tele.mVehicles[scor_idx].mID == scor_mid:
-            return scor_idx
-        for tele_idx in range(MAX_VEHICLES):
-            if data_tele.mVehicles[tele_idx].mID == scor_mid:
-                return tele_idx
-        return INVALID_INDEX
-
-    def __sync_player_data(self, data_scor, data_tele) -> bool:
-        """Sync local player data
-
-        1. Find scoring index, break if not found.
-        2. Update scoring index, mID, copy scoring data.
-        3. Find telemetry index, break if not found.
-        4. Update telemetry index, copy telemetry data.
-        """
+    def __sync_player_data(self) -> bool:
+        """Sync local player data"""
         if not self.override_player_index:
-            scor_idx = self.__local_scor_index(data_scor, self.player_scor_index)
+            # Update scoring index
+            scor_idx = self.__local_scor_index(self.player_scor_index)
             if scor_idx == INVALID_INDEX:
-                return False
+                return False  # index not found, not synced
             self.player_scor_index = scor_idx
-
-        self.player_scor = copy.deepcopy(data_scor.mVehicles[self.player_scor_index])
-
-        tele_idx = self.__local_tele_index(
-            data_tele, self.player_scor_index, self.player_scor.mID)
-        if tele_idx == INVALID_INDEX:
-            return True  # found 1 index
-        #self.player_tele_index = tele_idx
-        self.player_tele = copy.deepcopy(data_tele.mVehicles[tele_idx])
-        return True  # found 2 index
+        # Copy scoring data
+        self.copy_player_scor(self.player_scor_index)
+        # Update telemetry index
+        tele_idx = self.sync_tele_index(self.player_scor_index)
+        if tele_idx != INVALID_INDEX:
+            # Copy telemetry data
+            self.copy_player_tele(tele_idx)
+        return True  # found index, synced
 
     def sync_tele_index(self, scor_idx: int) -> int:
         """Sync telemetry index with scoring index using mID
+
+        Telemetry index can be different from scoring index.
+        Use mID matching to find telemetry index.
 
         Compare scor mid with tele mid first.
         If not same, loop through all vehicles.
@@ -264,8 +235,8 @@ class SyncData:
         else:
             self.updating = True
             self.dataset.create_mmap(access_mode, rf2_pid)
-            self.dataset.update_mmap()
-            self.copy_mmap_player()
+            self.copy_player_scor()
+            self.copy_player_tele()
 
             self.update_thread = threading.Thread(
                 target=self.__update, daemon=True)
@@ -295,8 +266,7 @@ class SyncData:
             # Update player data & index
             if not data_freezed:
                 # Get player data
-                data_synced = self.__sync_player_data(
-                    self.dataset.scor, self.dataset.tele)
+                data_synced = self.__sync_player_data()
                 # Pause if local player index no longer exists, 5 tries
                 if not data_synced and reset_counter < 6:
                     reset_counter += 1
