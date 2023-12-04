@@ -53,7 +53,7 @@ class RF2MMap:
         )
         self.__buffer_copy(True)
         mode = "Direct" if access_mode else "Copy"
-        logger.info("sharedmemory - ACTIVE: %s > %s Access", self.mmap_id, mode)
+        logger.info("sharedmemory: ACTIVE: %s (%s Access)", self.mmap_id, mode)
 
     def close(self) -> None:
         """Close memory mapping
@@ -64,9 +64,9 @@ class RF2MMap:
         self._buffer_sharing = False
         try:
             self._mmap_instance.close()
-            logger.info("sharedmemory - CLOSED: %s", self.mmap_id)
+            logger.info("sharedmemory: CLOSED: %s", self.mmap_id)
         except BufferError:
-            logger.error("sharedmemory - buffer error while closing mmap")
+            logger.error("sharedmemory: buffer error while closing mmap")
 
     def update(self) -> None:
         """Update mmap data"""
@@ -231,7 +231,7 @@ class SyncData:
     def start(self, access_mode: int, rf2_pid: str) -> None:
         """Update & sync mmap data copy in separate thread"""
         if self.updating:
-            logger.warning("sharedmemory - already updating !!!")
+            logger.warning("sharedmemory: UPDATING: already started")
         else:
             self.updating = True
             self.dataset.create_mmap(access_mode, rf2_pid)
@@ -241,8 +241,8 @@ class SyncData:
             self.update_thread = threading.Thread(
                 target=self.__update, daemon=True)
             self.update_thread.start()
-            logger.info("sharedmemory - updating thread started")
-            logger.info("sharedmemory - player index override: %s", self.override_player_index)
+            logger.info("sharedmemory: UPDATING: thread started")
+            logger.info("sharedmemory: player index override: %s", self.override_player_index)
 
     def stop(self) -> None:
         """Join and stop updating thread, close mmap"""
@@ -251,7 +251,7 @@ class SyncData:
             self.update_thread.join()
             self.dataset.close_mmap()
         else:
-            logger.warning("sharedmemory - already stopped !!!")
+            logger.warning("sharedmemory: UPDATING: already stopped")
 
     def __update(self) -> None:
         """Update synced player data"""
@@ -276,7 +276,7 @@ class SyncData:
                 # Activate pause
                 if reset_counter == 5:
                     self.paused = True
-                    logger.info("sharedmemory - player data paused")
+                    logger.info("sharedmemory: UPDATING: player data paused")
 
             # Start checking data version update status
             if time.time() - check_timer_start > 5:
@@ -286,9 +286,8 @@ class SyncData:
                     data_freezed = True
                     self.paused = True
                     logger.info(
-                        "sharedmemory - data paused, version %s",
-                        last_version_update
-                    )
+                        "sharedmemory: UPDATING: paused, data version %s",
+                        last_version_update)
                 last_version_update = self.dataset.scor.mVersionUpdateEnd
                 check_timer_start = time.time()  # reset timer
 
@@ -298,14 +297,13 @@ class SyncData:
                 data_freezed = False
                 self.paused = False
                 logger.info(
-                    "sharedmemory - data unpaused, version %s",
-                    self.dataset.scor.mVersionUpdateEnd
-                )
+                    "sharedmemory: UPDATING: resumed, data version %s",
+                    self.dataset.scor.mVersionUpdateEnd)
 
             time.sleep(update_delay)
 
         self.paused = False
-        logger.info("sharedmemory - updating thread stopped")
+        logger.info("sharedmemory: UPDATING: thread stopped")
 
 
 class RF2SM:
