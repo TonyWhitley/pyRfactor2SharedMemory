@@ -26,6 +26,27 @@ INVALID_INDEX = -1
 logger = logging.getLogger(__name__)
 
 
+def platform_mmap(name: str, size: int, pid: str = "") -> mmap:
+    """Platform memory mapping"""
+    if PLATFORM == "Windows":
+        return windows_mmap(name, size, pid)
+    return linux_mmap(name, size)
+
+
+def windows_mmap(name: str, size: int, pid: str) -> mmap:
+    """Windows mmap"""
+    return mmap.mmap(-1, size, f"{name}{pid}")
+
+
+def linux_mmap(name: str, size: int) -> mmap:
+    """Linux mmap"""
+    file = open("/dev/shm/" + name, "a+")
+    if file.tell() == 0:
+        file.write("\0" * size)
+        file.flush()
+    return mmap.mmap(file.fileno(), size)
+
+
 class RF2MMap:
     """Create rF2 Memory Map
 
@@ -46,7 +67,7 @@ class RF2MMap:
     def create(self, access_mode: int = 0, rf2_pid: str = "") -> None:
         """Create mmap instance & initial accessible copy"""
         self._access_mode = access_mode
-        self._mmap_instance = self.platform_mmap(
+        self._mmap_instance = platform_mmap(
             name=self._mmap_name,
             size=ctypes.sizeof(self._rf2_data),
             pid=rf2_pid
@@ -91,26 +112,6 @@ class RF2MMap:
         temp = self._rf2_data.from_buffer_copy(self._mmap_instance)
         if temp.mVersionUpdateEnd == temp.mVersionUpdateBegin or skip_check:
             self._mmap_output = temp
-
-    def platform_mmap(self, name: str, size: int, pid: str = "") -> mmap:
-        """Platform memory mapping"""
-        if PLATFORM == "Windows":
-            return self.windows_mmap(name, size, pid)
-        return self.linux_mmap(name, size)
-
-    @staticmethod
-    def windows_mmap(name: str, size: int, pid: str) -> mmap:
-        """Windows mmap"""
-        return mmap.mmap(-1, size, f"{name}{pid}")
-
-    @staticmethod
-    def linux_mmap(name: str, size: int) -> mmap:
-        """Linux mmap"""
-        file = open("/dev/shm/" + name, "a+")
-        if file.tell() == 0:
-            file.write("\0" * size)
-            file.flush()
-        return mmap.mmap(file.fileno(), size)
 
 
 class MMapDataSet:
@@ -239,6 +240,7 @@ class SyncData:
             self.update_thread.start()
             logger.info("sharedmemory: UPDATING: thread started")
             logger.info("sharedmemory: player index override: %s", self.override_player_index)
+            logger.info("sharedmemory: server process ID: %s", rf2_pid if rf2_pid else "DISABLED")
 
     def stop(self) -> None:
         """Join and stop updating thread, close mmap"""
