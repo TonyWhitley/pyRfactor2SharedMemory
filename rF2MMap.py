@@ -40,9 +40,9 @@ def windows_mmap(name: str, size: int, pid: str) -> mmap:
 
 def linux_mmap(name: str, size: int) -> mmap:
     """Linux mmap"""
-    file = open("/dev/shm/" + name, "a+")
+    file = open("/dev/shm/" + name, "a+b")
     if file.tell() == 0:
-        file.write("\0" * size)
+        file.write(b"\0" * size)
         file.flush()
     return mmap.mmap(file.fileno(), size)
 
