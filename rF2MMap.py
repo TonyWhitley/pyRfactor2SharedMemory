@@ -168,6 +168,7 @@ class SyncData:
         self.updating = False
         self.update_thread = None
         self.paused = True
+        self.event = threading.Event()
 
         self.override_player_index = False
         self.player_scor_index = INVALID_INDEX
@@ -231,6 +232,7 @@ class SyncData:
             logger.warning("sharedmemory: UPDATING: already started")
         else:
             self.updating = True
+            self.event.clear()
             self.dataset.create_mmap(access_mode, rf2_pid)
             self.copy_player_scor()
             self.copy_player_tele()
@@ -245,6 +247,7 @@ class SyncData:
     def stop(self) -> None:
         """Join and stop updating thread, close mmap"""
         if self.updating:
+            self.event.set()
             self.updating = False
             self.update_thread.join()
             self.dataset.close_mmap()
@@ -259,7 +262,7 @@ class SyncData:
         reset_counter = 0
         update_delay = 0.5  # longer delay while inactive
 
-        while self.updating:
+        while not self.event.wait(update_delay):
             self.dataset.update_mmap()
             # Update player data & index
             if not data_freezed:
@@ -297,8 +300,6 @@ class SyncData:
                 logger.info(
                     "sharedmemory: UPDATING: resumed, data version %s",
                     self.dataset.scor.mVersionUpdateEnd)
-
-            time.sleep(update_delay)
 
         self.paused = False
         logger.info("sharedmemory: UPDATING: thread stopped")
