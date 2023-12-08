@@ -174,6 +174,7 @@ class SyncData:
         self.player_scor_index = INVALID_INDEX
         self.player_scor = None
         self.player_tele = None
+        self.tele_idx_dict = {idx: idx for idx in range(128)}
 
     def copy_player_scor(self, index: int = INVALID_INDEX) -> None:
         """Copy scoring player data"""
@@ -202,29 +203,28 @@ class SyncData:
             if scor_idx == INVALID_INDEX:
                 return False  # index not found, not synced
             self.player_scor_index = scor_idx
-        # Copy scoring data
+        # Copy player data
         self.copy_player_scor(self.player_scor_index)
-        # Update telemetry index
-        tele_idx = self.sync_tele_index(self.player_scor_index)
-        if tele_idx != INVALID_INDEX:
-            # Copy telemetry data
-            self.copy_player_tele(tele_idx)
+        self.copy_player_tele(self.sync_tele_index(self.player_scor_index))
         return True  # found index, synced
 
-    def sync_tele_index(self, scor_idx: int) -> int:
-        """Sync telemetry index with scoring index using mID
+    def __update_tele_index_dict(self, num_vehicles: int) -> None:
+        """Update telemetry player index dictionary for quick reference
 
         Telemetry index can be different from scoring index.
-        Use mID matching to find telemetry index.
-
-        Compare scor mid with tele mid first.
-        If not same, loop through all vehicles.
+        Use mID matching to match telemetry index.
+        key: Tele mID
+        value: Tele index
         """
-        scor_mid = self.dataset.scor.mVehicles[scor_idx].mID
-        for tele_idx in range(MAX_VEHICLES):
-            if self.dataset.tele.mVehicles[tele_idx].mID == scor_mid:
-                return tele_idx
-        return INVALID_INDEX
+        for idx in range(num_vehicles):
+            self.tele_idx_dict[self.dataset.tele.mVehicles[idx].mID] = idx
+
+    def sync_tele_index(self, scor_idx: int) -> int:
+        """Find & sync telemetry index
+
+        Match scoring mID with telemetry mID in tele_idx_dict
+        """
+        return self.tele_idx_dict[self.dataset.scor.mVehicles[scor_idx].mID]
 
     def start(self, access_mode: int, rf2_pid: str) -> None:
         """Update & sync mmap data copy in separate thread"""
@@ -264,6 +264,7 @@ class SyncData:
 
         while not self.event.wait(update_delay):
             self.dataset.update_mmap()
+            self.__update_tele_index_dict(self.dataset.tele.mNumVehicles)
             # Update player data & index
             if not data_freezed:
                 # Get player data
