@@ -178,11 +178,11 @@ class SyncData:
 
     def copy_player_scor(self, index: int = INVALID_INDEX) -> None:
         """Copy scoring player data"""
-        self.player_scor = copy.deepcopy(self.dataset.scor.mVehicles[index])
+        self.player_scor = copy.copy(self.dataset.scor.mVehicles[index])
 
     def copy_player_tele(self, index: int = INVALID_INDEX) -> None:
         """Copy telemetry player data"""
-        self.player_tele = copy.deepcopy(self.dataset.tele.mVehicles[index])
+        self.player_tele = copy.copy(self.dataset.tele.mVehicles[index])
 
     def __local_scor_index(self) -> int:
         """Find local player scoring index
