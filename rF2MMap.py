@@ -167,7 +167,7 @@ class SyncData:
         self.dataset = MMapDataSet()
         self.updating = False
         self.update_thread = None
-        self.paused = True
+        self.paused = False
         self.event = threading.Event()
 
         self.override_player_index = False
@@ -232,11 +232,14 @@ class SyncData:
             logger.warning("sharedmemory: UPDATING: already started")
         else:
             self.updating = True
-            self.event.clear()
+            # Initialize mmap data
             self.dataset.create_mmap(access_mode, rf2_pid)
-            self.copy_player_scor()
-            self.copy_player_tele()
-
+            self.__update_tele_index_dict(self.dataset.tele.mNumVehicles)
+            if not self.__sync_player_data():
+                self.copy_player_scor()
+                self.copy_player_tele()
+            # Setup updating thread
+            self.event.clear()
             self.update_thread = threading.Thread(
                 target=self.__update, daemon=True)
             self.update_thread.start()
@@ -256,6 +259,7 @@ class SyncData:
 
     def __update(self) -> None:
         """Update synced player data"""
+        self.paused = False  # make sure initial pause state is false
         last_version_update = 0  # store last data version update
         data_freezed = True      # whether data is freezed
         check_timer_start = 0
@@ -302,7 +306,6 @@ class SyncData:
                     "sharedmemory: UPDATING: resumed, data version %s",
                     self.dataset.scor.mVersionUpdateEnd)
 
-        self.paused = False
         logger.info("sharedmemory: UPDATING: thread stopped")
 
 
