@@ -224,7 +224,8 @@ class SyncData:
 
         Match scoring mID with telemetry mID in tele_idx_dict
         """
-        return self.tele_idx_dict[self.dataset.scor.mVehicles[scor_idx].mID]
+        return self.tele_idx_dict.get(
+            self.dataset.scor.mVehicles[scor_idx].mID, INVALID_INDEX)
 
     def start(self, access_mode: int, rf2_pid: str) -> None:
         """Update & sync mmap data copy in separate thread"""
