@@ -52,11 +52,16 @@ class RF2MMap:
     """Create rF2 Memory Map
 
     Attributes:
-        mmap_name: mmap filename, ex. $rFactor2SMMP_Scoring$.
-        rf2_data: rf2 data class defined in rF2data, ex. rF2data.rF2Scoring.
+        mmap_id: mmap name string.
     """
 
     def __init__(self, mmap_name: str, rf2_data: object) -> None:
+        """Initialize memory map setting
+
+        Args:
+            mmap_name: mmap filename, ex. $rFactor2SMMP_Scoring$.
+            rf2_data: rF2 data class defined in rF2data, ex. rF2data.rF2Scoring.
+        """
         self.mmap_id = mmap_name.strip("$")
         self._mmap_name = mmap_name
         self._rf2_data = rf2_data
@@ -70,7 +75,7 @@ class RF2MMap:
 
         Args:
             access_mode: 0 = copy access, 1 = direct access.
-            rf2_pid: rf2 Process ID for accessing server data.
+            rf2_pid: rF2 Process ID for accessing server data.
         """
         self._access_mode = access_mode
         self._mmap_instance = platform_mmap(
@@ -125,7 +130,11 @@ class RF2MMap:
 
 
 class MMapDataSet:
-    """Create mmap data set"""
+    """Create mmap data set
+
+    Attributes:
+        mmap_pack: Holds mmap instances list.
+    """
 
     def __init__(self) -> None:
         self._scor = RF2MMap("$rFactor2SMMP_Scoring$", rF2data.rF2Scoring)
@@ -139,7 +148,7 @@ class MMapDataSet:
 
         Args:
             access_mode: 0 = copy access, 1 = direct access.
-            rf2_pid: rf2 Process ID for accessing server data.
+            rf2_pid: rF2 Process ID for accessing server data.
         """
         for data in self.mmap_pack:
             data.create(access_mode, rf2_pid)
@@ -176,20 +185,29 @@ class MMapDataSet:
 
 
 class SyncData:
-    """Synchronize data with player ID"""
+    """Synchronize data with player ID
+
+    Attributes:
+        dataset: mmap data set.
+        paused: Data update state (boolean).
+        override_player_index: Player index override state (boolean).
+        player_scor_index: Local player scoring index.
+        player_scor: Local player scoring data.
+        player_tele: Local player telemetry data.
+    """
 
     def __init__(self) -> None:
-        self.dataset = MMapDataSet()
-        self.updating = False
-        self.update_thread = None
-        self.paused = False
-        self.event = threading.Event()
+        self._updating = False
+        self._update_thread = None
+        self._event = threading.Event()
+        self._tele_idx_dict = {_index: _index for _index in range(128)}
 
+        self.dataset = MMapDataSet()
+        self.paused = False
         self.override_player_index = False
         self.player_scor_index = INVALID_INDEX
         self.player_scor = None
         self.player_tele = None
-        self.tele_idx_dict = {_index: _index for _index in range(128)}
 
     def copy_player_scor(self, index: int = INVALID_INDEX) -> None:
         """Copy scoring player data from matching index"""
@@ -200,11 +218,7 @@ class SyncData:
         self.player_tele = copy.copy(self.dataset.tele.mVehicles[index])
 
     def __local_scor_index(self) -> int:
-        """Find local player scoring index
-
-        Check last found index first.
-        If not player, loop through all vehicles.
-        """
+        """Find local player scoring index"""
         for scor_idx in range(MAX_VEHICLES):
             if self.dataset.scor.mVehicles[scor_idx].mIsPlayer:
                 return scor_idx
@@ -234,15 +248,13 @@ class SyncData:
         Telemetry index can be different from scoring index.
         Use mID matching to match telemetry index.
 
-        Args:
-            num_vehicles: total number of vehicles.
+        _tele_idx_dict: Telemetry mID:index reference dictionary.
 
-        tele_idx_dict:
-            key: Tele mID.
-            value: Tele index.
+        Args:
+            num_vehicles: Total number of vehicles.
         """
         for _index in range(num_vehicles):
-            self.tele_idx_dict[self.dataset.tele.mVehicles[_index].mID] = _index
+            self._tele_idx_dict[self.dataset.tele.mVehicles[_index].mID] = _index
 
     def sync_tele_index(self, scor_idx: int) -> int:
         """Sync telemetry index
@@ -252,12 +264,12 @@ class SyncData:
         to find telemetry index.
 
         Args:
-            scor_idx: player scoring index.
+            scor_idx: Player scoring index.
 
         Returns:
             Player telemetry index.
         """
-        return self.tele_idx_dict.get(
+        return self._tele_idx_dict.get(
             self.dataset.scor.mVehicles[scor_idx].mID, INVALID_INDEX)
 
     def start(self, access_mode: int, rf2_pid: str) -> None:
@@ -265,12 +277,12 @@ class SyncData:
 
         Args:
             access_mode: 0 = copy access, 1 = direct access.
-            rf2_pid: rf2 Process ID for accessing server data.
+            rf2_pid: rF2 Process ID for accessing server data.
         """
-        if self.updating:
+        if self._updating:
             logger.warning("sharedmemory: UPDATING: already started")
         else:
-            self.updating = True
+            self._updating = True
             # Initialize mmap data
             self.dataset.create_mmap(access_mode, rf2_pid)
             self.__update_tele_index_dict(self.dataset.tele.mNumVehicles)
@@ -278,20 +290,20 @@ class SyncData:
                 self.copy_player_scor()
                 self.copy_player_tele()
             # Setup updating thread
-            self.event.clear()
-            self.update_thread = threading.Thread(
+            self._event.clear()
+            self._update_thread = threading.Thread(
                 target=self.__update, daemon=True)
-            self.update_thread.start()
+            self._update_thread.start()
             logger.info("sharedmemory: UPDATING: thread started")
             logger.info("sharedmemory: player index override: %s", self.override_player_index)
             logger.info("sharedmemory: server process ID: %s", rf2_pid if rf2_pid else "DISABLED")
 
     def stop(self) -> None:
         """Join and stop updating thread, close mmap"""
-        if self.updating:
-            self.event.set()
-            self.updating = False
-            self.update_thread.join()
+        if self._updating:
+            self._event.set()
+            self._updating = False
+            self._update_thread.join()
             self.dataset.close_mmap()
         else:
             logger.warning("sharedmemory: UPDATING: already stopped")
@@ -305,7 +317,7 @@ class SyncData:
         reset_counter = 0
         update_delay = 0.5  # longer delay while inactive
 
-        while not self.event.wait(update_delay):
+        while not self._event.wait(update_delay):
             self.dataset.update_mmap()
             self.__update_tele_index_dict(self.dataset.tele.mNumVehicles)
             # Update player data & index
@@ -349,43 +361,39 @@ class SyncData:
 
 
 class RF2SM:
-    """
-    RF2 shared memory data output
-
-    Optional parameters:
-        setMode: set access mode, 0 = copy access, 1 = direct access
-        setPID: set process ID for connecting to server data (str)
-        setPlayerOverride: enable player index override (bool)
-        setPlayerIndex: manually set player index (int)
-    """
+    """RF2 shared memory data output"""
 
     def __init__(self) -> None:
         self._sync = SyncData()
-        self.access_mode = 0
-        self.rf2_pid = ""
+        self._access_mode = 0
+        self._rf2_pid = ""
 
     def start(self) -> None:
         """Start data updating thread"""
-        self._sync.start(self.access_mode, self.rf2_pid)
+        self._sync.start(self._access_mode, self._rf2_pid)
 
     def stop(self) -> None:
         """Stop data updating thread"""
         self._sync.stop()
 
     def setPID(self, pid: str = "") -> None:
-        """Set rf2 process ID"""
-        self.rf2_pid = str(pid)
+        """Set rF2 process ID for connecting to server data"""
+        self._rf2_pid = str(pid)
 
     def setMode(self, mode: int = 0) -> None:
-        """Set rf2 mmap access mode"""
-        self.access_mode = mode
+        """Set rF2 mmap access mode
+
+        Args:
+            mode: 0 = copy access, 1 = direct access
+        """
+        self._access_mode = mode
 
     def setPlayerOverride(self, state: bool = False) -> None:
-        """Set player index override state"""
+        """Enable player index override state"""
         self._sync.override_player_index = state
 
     def setPlayerIndex(self, index: int = INVALID_INDEX) -> None:
-        """Set player index"""
+        """Manual override player index"""
         self._sync.player_scor_index = min(max(index, INVALID_INDEX), MAX_VEHICLES - 1)
 
     @property
@@ -397,7 +405,9 @@ class RF2SM:
         """rF2 scoring vehicle data
 
         Specify index for specific player.
-        None for local player.
+
+        Args:
+            index: None for local player.
         """
         if index is None:
             return self._sync.player_scor
@@ -407,7 +417,9 @@ class RF2SM:
         """rF2 telemetry vehicle data
 
         Specify index for specific player.
-        None for local player.
+
+        Args:
+            index: None for local player.
         """
         if index is None:
             return self._sync.player_tele
