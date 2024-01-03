@@ -130,18 +130,13 @@ class RF2MMap:
 
 
 class MMapDataSet:
-    """Create mmap data set
-
-    Attributes:
-        mmap_pack: Holds mmap instances list.
-    """
+    """Create mmap data set"""
 
     def __init__(self) -> None:
         self._scor = RF2MMap("$rFactor2SMMP_Scoring$", rF2data.rF2Scoring)
         self._tele = RF2MMap("$rFactor2SMMP_Telemetry$", rF2data.rF2Telemetry)
         self._ext = RF2MMap("$rFactor2SMMP_Extended$", rF2data.rF2Extended)
         self._ffb = RF2MMap("$rFactor2SMMP_ForceFeedback$", rF2data.rF2ForceFeedback)
-        self.mmap_pack = (self._scor, self._tele, self._ext, self._ffb)
 
     def create_mmap(self, access_mode: int, rf2_pid: str) -> None:
         """Create mmap instance
@@ -150,18 +145,24 @@ class MMapDataSet:
             access_mode: 0 = copy access, 1 = direct access.
             rf2_pid: rF2 Process ID for accessing server data.
         """
-        for data in self.mmap_pack:
-            data.create(access_mode, rf2_pid)
+        self._scor.create(access_mode, rf2_pid)
+        self._tele.create(access_mode, rf2_pid)
+        self._ext.create(access_mode, rf2_pid)
+        self._ffb.create(access_mode, rf2_pid)
 
     def close_mmap(self) -> None:
         """Close mmap instance"""
-        for data in self.mmap_pack:
-            data.close()
+        self._scor.close()
+        self._tele.close()
+        self._ext.close()
+        self._ffb.close()
 
     def update_mmap(self) -> None:
         """Update mmap data"""
-        for data in self.mmap_pack:
-            data.update()
+        self._scor.update()
+        self._tele.update()
+        self._ext.update()
+        self._ffb.update()
 
     @property
     def scor(self):
