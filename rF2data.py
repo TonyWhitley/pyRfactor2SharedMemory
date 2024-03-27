@@ -173,10 +173,10 @@ class rF2Wheel(ctypes.Structure):
         ('mPressure', ctypes.c_double),                                     # kPa (tire pressure)
         ('mTemperature', ctypes.c_double*3),                                # Kelvin (subtract 273.15 to get Celsius), left/center/right (not to be confused with inside/center/outside!)
         ('mWear', ctypes.c_double),                                         # wear (0.0-1.0, fraction of maximum) ... this is not necessarily proportional with grip loss
-        ('mTerrainName', ctypes.c_ubyte*16),                                  # the material prefixes from the TDF file
+        ('mTerrainName', ctypes.c_char*16),                                  # the material prefixes from the TDF file
         ('mSurfaceType', ctypes.c_ubyte),                                    # 0=dry, 1=wet, 2=grass, 3=dirt, 4=gravel, 5=rumblestrip, 6 = special
-        ('mFlat', ctypes.c_ubyte),                                           # whether tire is flat
-        ('mDetached', ctypes.c_ubyte),                                       # whether wheel is detached
+        ('mFlat', ctypes.c_bool),                                           # whether tire is flat
+        ('mDetached', ctypes.c_bool),                                       # whether wheel is detached
         ('mStaticUndeflectedRadius', ctypes.c_ubyte),                        # tire radius in centimeters
         ('mVerticalTireDeflection', ctypes.c_double),                       # how much is tire deflected from its (speed-sensitive) radius
         ('mWheelYLocation', ctypes.c_double),                               # wheel's y location relative to vehicle y location
@@ -194,8 +194,8 @@ class rF2VehicleTelemetry(ctypes.Structure):
         ('mElapsedTime', ctypes.c_double),                                  # game session time
         ('mLapNumber', ctypes.c_int),                                       # current lap number
         ('mLapStartET', ctypes.c_double),                                   # time this lap was started
-        ('mVehicleName', ctypes.c_ubyte*64),                                  # current vehicle name
-        ('mTrackName', ctypes.c_ubyte*64),                                    # current track name
+        ('mVehicleName', ctypes.c_char*64),                                  # current vehicle name
+        ('mTrackName', ctypes.c_char*64),                                    # current track name
         ('mPos', rF2Vec3),                                         # world position in meters
         ('mLocalVel', rF2Vec3),                                    # velocity (meters/sec) in local vehicle coordinates
         ('mLocalAccel', rF2Vec3),                                  # acceleration (meters/sec^2) in local vehicle coordinates
@@ -227,9 +227,9 @@ class rF2VehicleTelemetry(ctypes.Structure):
         ('mFuel', ctypes.c_double),                                         # amount of fuel (liters)
         ('mEngineMaxRPM', ctypes.c_double),                                 # rev limit
         ('mScheduledStops', ctypes.c_ubyte),                                 # number of scheduled pitstops
-        ('mOverheating', ctypes.c_ubyte),                                    # whether overheating icon is shown
-        ('mDetached', ctypes.c_ubyte),                                       # whether any parts (besides wheels) have been detached
-        ('mHeadlights', ctypes.c_ubyte),                                     # whether headlights are on
+        ('mOverheating', ctypes.c_bool),                                    # whether overheating icon is shown
+        ('mDetached', ctypes.c_bool),                                       # whether any parts (besides wheels) have been detached
+        ('mHeadlights', ctypes.c_bool),                                     # whether headlights are on
         ('mDentSeverity', ctypes.c_ubyte*8),                                 # dent severity at 8 locations around the car (0=none, 1=some, 2=more)
         ('mLastImpactET', ctypes.c_double),                                 # time of last impact
         ('mLastImpactMagnitude', ctypes.c_double),                          # magnitude of last impact
@@ -245,8 +245,8 @@ class rF2VehicleTelemetry(ctypes.Structure):
         ('mRearFlapActivated', ctypes.c_ubyte),                              # whether rear flap is activated
         ('mRearFlapLegalStatus', ctypes.c_ubyte),                            # 0=disallowed, 1=criteria detected but not allowed quite yet, 2 = allowed
         ('mIgnitionStarter', ctypes.c_ubyte),                                # 0=off 1=ignition 2 = ignition+starter
-        ('mFrontTireCompoundName', ctypes.c_ubyte*18),                        # name of front tire compound
-        ('mRearTireCompoundName', ctypes.c_ubyte*18),                         # name of rear tire compound
+        ('mFrontTireCompoundName', ctypes.c_char*18),                        # name of front tire compound
+        ('mRearTireCompoundName', ctypes.c_char*18),                         # name of rear tire compound
         ('mSpeedLimiterAvailable', ctypes.c_ubyte),                          # whether speed limiter is available
         ('mAntiStallActivated', ctypes.c_ubyte),                             # whether (hard) anti-stall is activated
         ('mUnused', ctypes.c_ubyte*2),                                       #
@@ -255,14 +255,21 @@ class rF2VehicleTelemetry(ctypes.Structure):
         ('mTurboBoostPressure', ctypes.c_double),                           # current turbo boost pressure if available
         ('mPhysicsToGraphicsOffset', ctypes.c_float*3),                     # offset from static CG to graphical center
         ('mPhysicalSteeringWheelRange', ctypes.c_float),                    # the *physical* steering wheel range
-        ('mExpansion', ctypes.c_ubyte*152),                                    # for future use (note that the slot ID has been moved to mID above)
+        ('mDeltaBest', ctypes.c_double),                                    # (omitted in error by S397)
+        ('mBatteryChargeFraction', ctypes.c_double),                        # Battery charge as fraction [0.0-1.0]
+        ('mElectricBoostMotorTorque', ctypes.c_double),                     # current torque of boost motor (can be negative when in regenerating mode)
+        ('mElectricBoostMotorRPM', ctypes.c_double),                        # current rpm of boost motor
+        ('mElectricBoostMotorTemperature', ctypes.c_double),                # current temperature of boost motor
+        ('mElectricBoostWaterTemperature', ctypes.c_double),                # current water temperature of boost motor cooler if present (0 otherwise)
+        ('mElectricBoostMotorState', ctypes.c_ubyte),                       # 0=unavailable 1=inactive, 2=propulsion, 3=regeneration
+        ('mExpansion', ctypes.c_ubyte*103),                                 # for future use (note that the slot ID has been moved to mID above)
         ('mWheels', rF2Wheel*4),                                   # wheel info (front left, front right, rear left, rear right)
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2ScoringInfo(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mTrackName', ctypes.c_ubyte*64),                                    # current track name
+        ('mTrackName', ctypes.c_char*64),                                    # current track name
         ('mSession', ctypes.c_int),                                         # current session (0=testday 1-4=practice 5-8=qual 9=warmup 10-13 = race)
         ('mCurrentET', ctypes.c_double),                                    # current time
         ('mEndET', ctypes.c_double),                                        # ending time
@@ -271,13 +278,13 @@ class rF2ScoringInfo(ctypes.Structure):
         ('pointer1', ctypes.c_ubyte*8),
         ('mNumVehicles', ctypes.c_int),                                     # current number of vehicles
         ('mGamePhase', ctypes.c_ubyte),
-        ('mYellowFlagState', ctypes.c_ubyte),
+        ('mYellowFlagState', ctypes.c_char),
         ('mSectorFlag', ctypes.c_ubyte*3),                                  # whether there are any local yellows at the moment in each sector (not sure if sector 0 is first or last, so test)
         ('mStartLight', ctypes.c_ubyte),                                     # start light frame (number depends on track)
         ('mNumRedLights', ctypes.c_ubyte),                                   # number of red lights in start sequence
-        ('mInRealtime', ctypes.c_ubyte),                                     # in realtime as opposed to at the monitor
-        ('mPlayerName', ctypes.c_ubyte*32),                                   # player name (including possible multiplayer override)
-        ('mPlrFileName', ctypes.c_ubyte*64),                                  # may be encoded to be a legal filename
+        ('mInRealtime', ctypes.c_bool),                                     # in realtime as opposed to at the monitor
+        ('mPlayerName', ctypes.c_char*32),                                   # player name (including possible multiplayer override)
+        ('mPlrFileName', ctypes.c_char*64),                                  # may be encoded to be a legal filename
         ('mDarkCloud', ctypes.c_double),                                    # cloud darkness? 0.0-1.0
         ('mRaining', ctypes.c_double),                                      # raining severity 0.0-1.0
         ('mAmbientTemp', ctypes.c_double),                                  # temperature (Celsius)
@@ -286,11 +293,11 @@ class rF2ScoringInfo(ctypes.Structure):
         ('mMinPathWetness', ctypes.c_double),                               # minimum wetness on main path 0.0-1.0
         ('mMaxPathWetness', ctypes.c_double),                               # maximum wetness on main path 0.0-1.0
         ('mGameMode', ctypes.c_ubyte),                                       # 1 = server, 2 = client, 3 = server and client
-        ('mIsPasswordProtected', ctypes.c_ubyte),                            # is the server password protected
-        ('mServerPort', ctypes.c_short),                                   # the port of the server (if on a server)
-        ('mServerPublicIP', ctypes.c_int),                                 # the public IP address of the server (if on a server)
+        ('mIsPasswordProtected', ctypes.c_bool),                            # is the server password protected
+        ('mServerPort', ctypes.c_ushort),                                   # the port of the server (if on a server)
+        ('mServerPublicIP', ctypes.c_uint),                                 # the public IP address of the server (if on a server)
         ('mMaxPlayers', ctypes.c_int),                                      # maximum number of vehicles that can be in the session
-        ('mServerName', ctypes.c_ubyte*32),                                   # name of the server
+        ('mServerName', ctypes.c_char*32),                                   # name of the server
         ('mStartET', ctypes.c_float),                                       # start time (seconds since midnight) of the event
         ('mAvgPathWetness', ctypes.c_double),                               # average wetness on main path 0.0-1.0
         ('mExpansion', ctypes.c_ubyte*200),
@@ -301,11 +308,11 @@ class rF2VehicleScoring(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
         ('mID', ctypes.c_int),                                              # slot ID (note that it can be re-used in multiplayer after someone leaves)
-        ('mDriverName', ctypes.c_ubyte*32),                                   # driver name
-        ('mVehicleName', ctypes.c_ubyte*64),                                  # vehicle name
+        ('mDriverName', ctypes.c_char*32),                                   # driver name
+        ('mVehicleName', ctypes.c_char*64),                                  # vehicle name
         ('mTotalLaps', ctypes.c_short),                                     # laps completed
-        ('mSector', ctypes.c_ubyte),                                        # 0=sector3, 1=sector1, 2 = sector2 (don't ask why)
-        ('mFinishStatus', ctypes.c_ubyte),                                  # 0=none, 1=finished, 2=dnf, 3 = dq
+        ('mSector', ctypes.c_byte),                                        # 0=sector3, 1=sector1, 2 = sector2 (don't ask why)
+        ('mFinishStatus', ctypes.c_byte),                                  # 0=none, 1=finished, 2=dnf, 3 = dq
         ('mLapDist', ctypes.c_double),                                      # current distance around track
         ('mPathLateral', ctypes.c_double),                                  # lateral position with respect to *very approximate* "center" path
         ('mTrackEdge', ctypes.c_double),                                    # track edge (w.r.t. "center" path) on same side of track as vehicle
@@ -319,11 +326,11 @@ class rF2VehicleScoring(ctypes.Structure):
         ('mCurSector2', ctypes.c_double),                                   # current sector 2 (plus sector 1) if valid
         ('mNumPitstops', ctypes.c_short),                                   # number of pitstops made
         ('mNumPenalties', ctypes.c_short),                                  # number of outstanding penalties
-        ('mIsPlayer', ctypes.c_ubyte),                                       # is this the player's vehicle
-        ('mControl', ctypes.c_ubyte),                                       # who's in control: -1=nobody (shouldn't get this), 0=local player, 1=local AI, 2=remote, 3 = replay (shouldn't get this)
-        ('mInPits', ctypes.c_ubyte),                                         # between pit entrance and pit exit (not always accurate for remote vehicles)
+        ('mIsPlayer', ctypes.c_bool),                                       # is this the player's vehicle
+        ('mControl', ctypes.c_byte),                                       # who's in control: -1=nobody (shouldn't get this), 0=local player, 1=local AI, 2=remote, 3 = replay (shouldn't get this)
+        ('mInPits', ctypes.c_bool),                                         # between pit entrance and pit exit (not always accurate for remote vehicles)
         ('mPlace', ctypes.c_ubyte),                                          # 1-based position
-        ('mVehicleClass', ctypes.c_ubyte*32),                                 # vehicle class
+        ('mVehicleClass', ctypes.c_char*32),                                 # vehicle class
         ('mTimeBehindNext', ctypes.c_double),                               # time behind vehicle in next higher place
         ('mLapsBehindNext', ctypes.c_int),                                  # laps behind vehicle in next higher place
         ('mTimeBehindLeader', ctypes.c_double),                             # time behind leader
@@ -342,11 +349,11 @@ class rF2VehicleScoring(ctypes.Structure):
         ('mQualification', ctypes.c_int),                                   # 1-based, can be -1 when invalid
         ('mTimeIntoLap', ctypes.c_double),                                  # estimated time into lap
         ('mEstimatedLapTime', ctypes.c_double),                             # estimated laptime used for 'time behind' and 'time into lap' (note: this may changed based on vehicle and setup!?)
-        ('mPitGroup', ctypes.c_ubyte*24),                                     # pit group (same as team name unless pit is shared)
+        ('mPitGroup', ctypes.c_char*24),                                     # pit group (same as team name unless pit is shared)
         ('mFlag', ctypes.c_ubyte),                                           # primary flag being shown to vehicle (currently only 0=green or 6 = blue)
-        ('mUnderYellow', ctypes.c_ubyte),                                    # whether this car has taken a full-course caution flag at the start/finish line
+        ('mUnderYellow', ctypes.c_bool),                                    # whether this car has taken a full-course caution flag at the start/finish line
         ('mCountLapFlag', ctypes.c_ubyte),                                   # 0 = do not count lap or time, 1 = count lap but not time, 2 = count lap and time
-        ('mInGarageStall', ctypes.c_ubyte),                                  # appears to be within the correct garage stall
+        ('mInGarageStall', ctypes.c_bool),                                  # appears to be within the correct garage stall
         ('mUpgradePack', ctypes.c_ubyte*16),                                  # Coded upgrades
         ('mPitLapDist', ctypes.c_float),                                    # location of pit in terms of lap distance
         ('mBestLapSector1', ctypes.c_float),                                # sector 1 time from best lap (not necessarily the best sector 1 time)
@@ -429,10 +436,10 @@ class rF2TrackRulesParticipant(ctypes.Structure):
         ('mColumnAssignment', ctypes.c_int),                # which column (line/lane) that participant is supposed to be in
         ('mPositionAssignment', ctypes.c_int),                              # 0-based position within column (line/lane) that participant is supposed to be located at (-1 is invalid)
         ('mPitsOpen', ctypes.c_ubyte),                                      # whether the rules allow this particular vehicle to enter pits right now (input is 2=false or 3=true; if you want to edit it, set to 0=false or 1 = true)
-        ('mUpToSpeed', ctypes.c_ubyte),                                      # while in the frozen order, this flag indicates whether the vehicle can be followed (this should be false for somebody who has temporarily spun and hasn't gotten back up to speed yet)
-        ('mUnused', ctypes.c_ubyte*2),                                       #
+        ('mUpToSpeed', ctypes.c_bool),                                      # while in the frozen order, this flag indicates whether the vehicle can be followed (this should be false for somebody who has temporarily spun and hasn't gotten back up to speed yet)
+        ('mUnused', ctypes.c_bool*2),                                       #
         ('mGoalRelativeDistance', ctypes.c_double),                         # calculated based on where the leader is, and adjusted by the desired column spacing and the column/position assignments
-        ('mMessage', ctypes.c_ubyte*96),                                     # a message for this participant to explain what is going on it will get run through translator on client machines
+        ('mMessage', ctypes.c_char*96),                                     # a message for this participant to explain what is going on it will get run through translator on client machines
         ('mExpansion', ctypes.c_ubyte*192),
     ]
 class rF2TrackRulesStage(Enum):
@@ -452,10 +459,10 @@ class rF2TrackRules(ctypes.Structure):
         ('mNumActions', ctypes.c_int),                                      # number of recent actions
         ('pointer1', ctypes.c_ubyte*8),
         ('mNumParticipants', ctypes.c_int),                                 # number of participants (vehicles)
-        ('mYellowFlagDetected', ctypes.c_ubyte),                             # whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
+        ('mYellowFlagDetected', ctypes.c_bool),                             # whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
         ('mYellowFlagLapsWasOverridden', ctypes.c_ubyte),                    # whether mYellowFlagLaps (below) is an admin request (0=no 1=yes 2 = clear yellow)
-        ('mSafetyCarExists', ctypes.c_ubyte),                                # whether safety car even exists
-        ('mSafetyCarActive', ctypes.c_ubyte),                                # whether safety car is active
+        ('mSafetyCarExists', ctypes.c_bool),                                # whether safety car even exists
+        ('mSafetyCarActive', ctypes.c_bool),                                # whether safety car is active
         ('mSafetyCarLaps', ctypes.c_int),                                   # number of laps
         ('mSafetyCarThreshold', ctypes.c_float),                            # the threshold at which a safety car is called out (compared to the sum of TrackRulesParticipantV01::mYellowSeverity for each vehicle)
         ('mSafetyCarLapDist', ctypes.c_double),                             # safety car lap distance
@@ -463,7 +470,7 @@ class rF2TrackRules(ctypes.Structure):
         ('mPitLaneStartDist', ctypes.c_float),                              # where the waypoint branch to the pits breaks off (this may not be perfectly accurate)
         ('mTeleportLapDist', ctypes.c_float),                               # the front of the teleport locations (a useful first guess as to where to throw the green flag)
         ('mInputExpansion', ctypes.c_ubyte*256),
-        ('mYellowFlagState', ctypes.c_ubyte),                               # see ScoringInfoV01 for values
+        ('mYellowFlagState', ctypes.c_byte),                               # see ScoringInfoV01 for values
         ('mYellowFlagLaps', ctypes.c_short),                                # suggested number of laps to run under yellow (may be passed in with admin command)
         ('mSafetyCarInstruction', ctypes.c_int),                            # 0=no change, 1=go active, 2 = head for pits
         ('mSafetyCarSpeed', ctypes.c_float),                                # maximum speed at which to drive
@@ -473,7 +480,7 @@ class rF2TrackRules(ctypes.Structure):
         ('mMaximumColumnSpacing', ctypes.c_float),                          # maximum desired spacing between vehicles in a column (-1 to indicate indeterminate/unenforced)
         ('mMinimumSpeed', ctypes.c_float),                                  # minimum speed that anybody should be driving (-1 to indicate no limit)
         ('mMaximumSpeed', ctypes.c_float),                                  # maximum speed that anybody should be driving (-1 to indicate no limit)
-        ('mMessage', ctypes.c_ubyte*96),                                      # a message for everybody to explain what is going on (which will get run through translator on client machines)
+        ('mMessage', ctypes.c_char*96),                                      # a message for everybody to explain what is going on (which will get run through translator on client machines)
         ('pointer2', ctypes.c_ubyte*8),
         ('mInputOutputExpansion', ctypes.c_ubyte*256),
     ]
@@ -482,9 +489,9 @@ class rF2PitMenu(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
         ('mCategoryIndex', ctypes.c_int),                                   # index of the current category
-        ('mCategoryName', ctypes.c_ubyte*32),                                 # name of the current category (untranslated)
+        ('mCategoryName', ctypes.c_char*32),                                 # name of the current category (untranslated)
         ('mChoiceIndex', ctypes.c_int),                                     # index of the current choice (within the current category)
-        ('mChoiceString', ctypes.c_ubyte*32),                                 # name of the current choice (may have some translated words)
+        ('mChoiceString', ctypes.c_char*32),                                 # name of the current choice (may have some translated words)
         ('mNumChoices', ctypes.c_int),                                      # total number of choices (0 < = mChoiceIndex < mNumChoices)
         ('mExpansion', ctypes.c_ubyte*256),                                    # for future use
     ]
@@ -497,33 +504,33 @@ class rF2WeatherControlInfo(ctypes.Structure):
         ('mCloudiness', ctypes.c_double),                                   # general cloudiness (0.0=clear to 1.0 = dark)
         ('mAmbientTempK', ctypes.c_double),                                 # ambient temperature (Kelvin)
         ('mWindMaxSpeed', ctypes.c_double),                                 # maximum speed of wind (ground speed, but it affects how fast the clouds move, too)
-        ('mApplyCloudinessInstantly', ctypes.c_ubyte),                       # preferably we roll the new clouds in, but you can instantly change them now
-        ('mUnused1', ctypes.c_ubyte),                                        #
-        ('mUnused2', ctypes.c_ubyte),                                        #
-        ('mUnused3', ctypes.c_ubyte),                                        #
+        ('mApplyCloudinessInstantly', ctypes.c_bool),                       # preferably we roll the new clouds in, but you can instantly change them now
+        ('mUnused1', ctypes.c_bool),                                        #
+        ('mUnused2', ctypes.c_bool),                                        #
+        ('mUnused3', ctypes.c_bool),                                        #
         ('mExpansion', ctypes.c_ubyte*508),                                    # future use (humidity, pressure, air density, etc.)
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2MappedBufferVersionBlock(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2MappedBufferVersionBlockWithSize(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
         ('mBytesUpdatedHint', ctypes.c_int),                                # How many bytes of the structure were written during the last update.
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2Telemetry(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
         ('mBytesUpdatedHint', ctypes.c_int),                                # How many bytes of the structure were written during the last update.
         ('mNumVehicles', ctypes.c_int),                                     # current number of vehicles
         ('mVehicles', rF2VehicleTelemetry*rFactor2Constants.MAX_MAPPED_VEHICLES),
@@ -532,8 +539,8 @@ class rF2Telemetry(ctypes.Structure):
 class rF2Scoring(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
         ('mBytesUpdatedHint', ctypes.c_int),                                # How many bytes of the structure were written during the last update.
         ('mScoringInfo', rF2ScoringInfo),
         ('mVehicles', rF2VehicleScoring*rFactor2Constants.MAX_MAPPED_VEHICLES),
@@ -542,8 +549,8 @@ class rF2Scoring(ctypes.Structure):
 class rF2Rules(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
         ('mBytesUpdatedHint', ctypes.c_int),                                # How many bytes of the structure were written during the last update.
         ('mTrackRules', rF2TrackRules),
         ('mActions', rF2TrackRulesAction*rFactor2Constants.MAX_MAPPED_VEHICLES),
@@ -553,8 +560,8 @@ class rF2Rules(ctypes.Structure):
 class rF2ForceFeedback(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
         ('mForceValue', ctypes.c_double),                                   # Current FFB value reported via InternalsPlugin::ForceFeedback.
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
@@ -575,24 +582,24 @@ class rF2GraphicsInfo(ctypes.Structure):
 class rF2Graphics(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
         ('mGraphicsInfo', rF2GraphicsInfo),
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2PitInfo(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
         ('mPitMneu', rF2PitMenu),
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2Weather(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
         ('mTrackNodeSize', ctypes.c_double),
         ('mWeatherInfo', rF2WeatherControlInfo),
     ]
@@ -609,8 +616,8 @@ class rF2VehScoringCapture(ctypes.Structure):
     _fields_ = [
         ('mID', ctypes.c_int),                                              # slot ID (note that it can be re-used in multiplayer after someone leaves)
         ('mPlace', ctypes.c_ubyte),
-        ('mIsPlayer', ctypes.c_ubyte),
-        ('mFinishStatus', ctypes.c_ubyte),                                  # 0=none, 1=finished, 2=dnf, 3 = dq
+        ('mIsPlayer', ctypes.c_bool),
+        ('mFinishStatus', ctypes.c_byte),                                  # 0=none, 1=finished, 2=dnf, 3 = dq
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, Pack = 4)]
 class rF2SessionTransitionCapture(ctypes.Structure):
@@ -625,57 +632,57 @@ class rF2SessionTransitionCapture(ctypes.Structure):
 class rF2Extended(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
-        ('mVersion', ctypes.c_ubyte*12),                                      # API version
-        ('is64bit', ctypes.c_ubyte),                                         # Is 64bit plugin?
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
+        ('mVersion', ctypes.c_char*12),                                      # API version
+        ('is64bit', ctypes.c_bool),                                         # Is 64bit plugin?
         ('mPhysics', rF2PhysicsOptions),
         ('mTrackedDamages', rF2TrackedDamage*rFactor2Constants.MAX_MAPPED_IDS),
-        ('mInRealtimeFC', ctypes.c_ubyte),                                   # in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
-        ('mMultimediaThreadStarted', ctypes.c_ubyte),                        # multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
-        ('mSimulationThreadStarted', ctypes.c_ubyte),                        # simulation thread started (reported via ThreadStarted/ThreadStopped calls).
-        ('mSessionStarted', ctypes.c_ubyte),                                 # Set to true on Session Started, set to false on Session Ended.
-        ('mTicksSessionStarted', ctypes.c_double),                           # Ticks when session started.
-        ('mTicksSessionEnded', ctypes.c_double),                             # Ticks when session ended.
+        ('mInRealtimeFC', ctypes.c_bool),                                   # in realtime as opposed to at the monitor (reported via last EnterRealtime/ExitRealtime calls).
+        ('mMultimediaThreadStarted', ctypes.c_bool),                        # multimedia thread started (reported via ThreadStarted/ThreadStopped calls).
+        ('mSimulationThreadStarted', ctypes.c_bool),                        # simulation thread started (reported via ThreadStarted/ThreadStopped calls).
+        ('mSessionStarted', ctypes.c_bool),                                 # Set to true on Session Started, set to false on Session Ended.
+        ('mTicksSessionStarted', ctypes.c_ulonglong),                           # Ticks when session started.
+        ('mTicksSessionEnded', ctypes.c_ulonglong),                             # Ticks when session ended.
         ('mSessionTransitionCapture', rF2SessionTransitionCapture),# Contains partial internals capture at session transition time.
-        ('mDisplayedMessageUpdateCapture', ctypes.c_ubyte*128),
-        ('mDirectMemoryAccessEnabled', ctypes.c_ubyte),
-        ('mTicksStatusMessageUpdated', ctypes.c_double),					# Ticks when status message was updated;
-        ('mStatusMessage', ctypes.c_ubyte*rFactor2Constants.MAX_STATUS_MSG_LEN),
-        ('mTicksLastHistoryMessageUpdated', ctypes.c_double),				# Ticks when last message history message was updated;
-        ('mLastHistoryMessage', ctypes.c_ubyte*rFactor2Constants.MAX_STATUS_MSG_LEN),
+        ('mDisplayedMessageUpdateCapture', ctypes.c_char*128),
+        ('mDirectMemoryAccessEnabled', ctypes.c_bool),
+        ('mTicksStatusMessageUpdated', ctypes.c_ulonglong),					# Ticks when status message was updated;
+        ('mStatusMessage', ctypes.c_char*rFactor2Constants.MAX_STATUS_MSG_LEN),
+        ('mTicksLastHistoryMessageUpdated', ctypes.c_ulonglong),				# Ticks when last message history message was updated;
+        ('mLastHistoryMessage', ctypes.c_char*rFactor2Constants.MAX_STATUS_MSG_LEN),
         ('mCurrentPitSpeedLimit', ctypes.c_float),                          # speed limit m/s.
-        ('mSCRPluginEnabled', ctypes.c_ubyte),                               # Is Stock Car Rules plugin enabled?
+        ('mSCRPluginEnabled', ctypes.c_bool),                               # Is Stock Car Rules plugin enabled?
         ('mSCRPluginDoubleFileType', ctypes.c_int),                         # Stock Car Rules plugin DoubleFileType value, only meaningful if mSCRPluginEnabled is true.
-        ('mTicksLSIPhaseMessageUpdated', ctypes.c_double),                   # Ticks when last LSI phase message was updated.
-        ('mLSIPhaseMessage', ctypes.c_ubyte*rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN),
-        ('mTicksLSIPitStateMessageUpdated', ctypes.c_double),                # Ticks when last LSI pit state message was updated.
-        ('mLSIPitStateMessage', ctypes.c_ubyte*rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN),
-        ('mTicksLSIOrderInstructionMessageUpdated', ctypes.c_double),        # Ticks when last LSI order instruction message was updated.
-        ('mLSIOrderInstructionMessage', ctypes.c_ubyte*rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN),
-        ('mTicksLSIRulesInstructionMessageUpdated', ctypes.c_double),        # Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
-        ('mLSIRulesInstructionMessage', ctypes.c_ubyte*rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN),
+        ('mTicksLSIPhaseMessageUpdated', ctypes.c_ulonglong),                   # Ticks when last LSI phase message was updated.
+        ('mLSIPhaseMessage', ctypes.c_char*rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN),
+        ('mTicksLSIPitStateMessageUpdated', ctypes.c_ulonglong),                # Ticks when last LSI pit state message was updated.
+        ('mLSIPitStateMessage', ctypes.c_char*rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN),
+        ('mTicksLSIOrderInstructionMessageUpdated', ctypes.c_ulonglong),        # Ticks when last LSI order instruction message was updated.
+        ('mLSIOrderInstructionMessage', ctypes.c_char*rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN),
+        ('mTicksLSIRulesInstructionMessageUpdated', ctypes.c_ulonglong),        # Ticks when last FCY rules message was updated.  Currently, only SCR plugin sets that.
+        ('mLSIRulesInstructionMessage', ctypes.c_char*rFactor2Constants.MAX_RULES_INSTRUCTION_MSG_LEN),
         ('mUnsubscribedBuffersMask', ctypes.c_int),                         # Currently active UnsbscribedBuffersMask value.  This will be allowed for clients to write to in the future, but not yet.
-        ('mHWControlInputEnabled', ctypes.c_ubyte),                          # HWControl input buffer is enabled.
-        ('mWeatherControlInputEnabled', ctypes.c_ubyte),                     # WeatherControl input buffer is enabled.
-        ('mRulesControlInputEnabled', ctypes.c_ubyte),                       # RulesControl input buffer is enabled.
+        ('mHWControlInputEnabled', ctypes.c_bool),                          # HWControl input buffer is enabled.
+        ('mWeatherControlInputEnabled', ctypes.c_bool),                     # WeatherControl input buffer is enabled.
+        ('mRulesControlInputEnabled', ctypes.c_bool),                       # RulesControl input buffer is enabled.
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2HWControl(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
         ('mLayoutVersion', ctypes.c_int),
-        ('mControlName', ctypes.c_ubyte*rFactor2Constants.MAX_HWCONTROL_NAME_LEN),
+        ('mControlName', ctypes.c_char*rFactor2Constants.MAX_HWCONTROL_NAME_LEN),
         ('mfRetVal', ctypes.c_double),
     ]
 #untranslated [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 4)]
 class rF2WeatherControl(ctypes.Structure):
     _pack_ = 4
     _fields_ = [
-        ('mVersionUpdateBegin', ctypes.c_int),                             # Incremented right before buffer is written to.
-        ('mVersionUpdateEnd', ctypes.c_int),                               # Incremented after buffer write is done.
+        ('mVersionUpdateBegin', ctypes.c_uint),                             # Incremented right before buffer is written to.
+        ('mVersionUpdateEnd', ctypes.c_uint),                               # Incremented after buffer write is done.
         ('mLayoutVersion', ctypes.c_int),
         ('mWeatherInfo', rF2WeatherControlInfo),
     ]
