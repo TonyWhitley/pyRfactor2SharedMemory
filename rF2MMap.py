@@ -147,8 +147,8 @@ class MMapDataSet:
         """
         self._scor.create(access_mode, rf2_pid)
         self._tele.create(access_mode, rf2_pid)
-        self._ext.create(access_mode, rf2_pid)
-        self._ffb.create(access_mode, rf2_pid)
+        self._ext.create(1, rf2_pid)
+        self._ffb.create(1, rf2_pid)
 
     def close_mmap(self) -> None:
         """Close mmap instance"""
@@ -312,9 +312,10 @@ class SyncData:
     def __update(self) -> None:
         """Update synced player data"""
         self.paused = False  # make sure initial pause state is false
-        last_version_update = 0  # store last data version update
-        data_freezed = True      # whether data is freezed
-        check_timer_start = 0
+        freezed_version = 0  # store freezed update version number
+        last_version_update = 0  # store last update version number
+        last_update_time = 0
+        data_freezed = True  # whether data is freezed
         reset_counter = 0
         update_delay = 0.5  # longer delay while inactive
 
@@ -336,27 +337,25 @@ class SyncData:
                     self.paused = True
                     logger.info("sharedmemory: UPDATING: player data paused")
 
-            # Start checking data version update status
-            if time.time() - check_timer_start > 5:
-                if (not data_freezed
-                    and last_version_update == self.dataset.scor.mVersionUpdateEnd):
-                    update_delay = 0.5
-                    data_freezed = True
-                    self.paused = True
-                    logger.info(
-                        "sharedmemory: UPDATING: paused, data version %s",
-                        last_version_update)
+            if last_version_update != self.dataset.scor.mVersionUpdateEnd:
+                last_update_time = time.time()
                 last_version_update = self.dataset.scor.mVersionUpdateEnd
-                check_timer_start = time.time()  # reset timer
 
-            if (data_freezed
-                and last_version_update != self.dataset.scor.mVersionUpdateEnd):
+            # Set freeze state if data stopped updating after 2s
+            if not data_freezed and time.time() - last_update_time > 2:
+                update_delay = 0.5
+                data_freezed = True
+                self.paused = True
+                freezed_version = last_version_update
+                logger.info(
+                    "sharedmemory: UPDATING: paused, data version %s", freezed_version)
+
+            if data_freezed and freezed_version != last_version_update:
                 update_delay = 0.01
                 data_freezed = False
                 self.paused = False
                 logger.info(
-                    "sharedmemory: UPDATING: resumed, data version %s",
-                    self.dataset.scor.mVersionUpdateEnd)
+                    "sharedmemory: UPDATING: resumed, data version %s", last_version_update)
 
         logger.info("sharedmemory: UPDATING: thread stopped")
 
