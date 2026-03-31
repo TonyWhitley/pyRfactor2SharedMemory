@@ -144,7 +144,7 @@ class rF2ScoringInfo(_NOINIT):
     mEndET: float
     mMaxLaps: int
     mLapDist: float
-    pointer1: tuple[int, ...]
+    mResultsStreamPointer: tuple[int, ...]
     mNumVehicles: int
     mGamePhase: int
     mYellowFlagState: int
@@ -170,7 +170,7 @@ class rF2ScoringInfo(_NOINIT):
     mStartET: float
     mAvgPathWetness: float
     mExpansion: tuple[int, ...]
-    pointer2: tuple[int, ...]
+    mVehiclePointer: tuple[int, ...]
 
 
 class rF2VehicleScoring(_NOINIT):
@@ -226,7 +226,7 @@ class rF2VehicleScoring(_NOINIT):
     mBestLapSector1: float
     mBestLapSector2: float
     mSteamID: int
-    mVehFilename: str
+    mVehFilename: bytes
     mAttackMode: int
     mFuelFraction: float
     mDRSState: bool
@@ -292,7 +292,7 @@ class rF2TrackRules(_NOINIT):
     mStage: int
     mPoleColumn: int
     mNumActions: int
-    pointer1: tuple[int, ...]
+    mActionPointer: tuple[int, ...]
     mNumParticipants: int
     mYellowFlagDetected: bool
     mYellowFlagLapsWasOverridden: int
@@ -316,7 +316,7 @@ class rF2TrackRules(_NOINIT):
     mMinimumSpeed: float
     mMaximumSpeed: float
     mMessage: bytes
-    pointer2: tuple[int, ...]
+    mParticipantPointer: tuple[int, ...]
     mInputOutputExpansion: tuple[int, ...]
 
 

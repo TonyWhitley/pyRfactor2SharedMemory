@@ -475,7 +475,7 @@ class rF2ScoringInfo(ctypes.Structure):
         ("mEndET", ctypes.c_double),              # ending time
         ("mMaxLaps", ctypes.c_int),               # maximum laps
         ("mLapDist", ctypes.c_double),            # distance around track
-        ("pointer1", ctypes.c_ubyte*8),
+        ("mResultsStreamPointer", ctypes.c_ubyte*8),
         ("mNumVehicles", ctypes.c_int),           # current number of vehicles
         ("mGamePhase", ctypes.c_ubyte),
         ("mYellowFlagState", ctypes.c_char),
@@ -501,7 +501,7 @@ class rF2ScoringInfo(ctypes.Structure):
         ("mStartET", ctypes.c_float),             # start time (seconds since midnight) of the event
         ("mAvgPathWetness", ctypes.c_double),     # average wetness on main path 0.0-1.0
         ("mExpansion", ctypes.c_ubyte*200),
-        ("pointer2", ctypes.c_ubyte*8),
+        ("mVehiclePointer", ctypes.c_ubyte*8),
     ]
 
 
@@ -648,7 +648,7 @@ class rF2TrackRules(ctypes.Structure):
         ("mStage", ctypes.c_int),                          # current stage
         ("mPoleColumn", ctypes.c_int),                     # column assignment where pole position seems to be located
         ("mNumActions", ctypes.c_int),                     # number of recent actions
-        ("pointer1", ctypes.c_ubyte*8),
+        ("mActionPointer", ctypes.c_ubyte*8),
         ("mNumParticipants", ctypes.c_int),                # number of participants (vehicles)
         ("mYellowFlagDetected", ctypes.c_bool),            # whether yellow flag was requested or sum of participant mYellowSeverity's exceeds mSafetyCarThreshold
         ("mYellowFlagLapsWasOverridden", ctypes.c_ubyte),  # whether mYellowFlagLaps (below) is an admin request (0=no 1=yes 2 = clear yellow)
@@ -672,7 +672,7 @@ class rF2TrackRules(ctypes.Structure):
         ("mMinimumSpeed", ctypes.c_float),                 # minimum speed that anybody should be driving (-1 to indicate no limit)
         ("mMaximumSpeed", ctypes.c_float),                 # maximum speed that anybody should be driving (-1 to indicate no limit)
         ("mMessage", ctypes.c_char*96),                    # a message for everybody to explain what is going on (which will get run through translator on client machines)
-        ("pointer2", ctypes.c_ubyte*8),
+        ("mParticipantPointer", ctypes.c_ubyte*8),
         ("mInputOutputExpansion", ctypes.c_ubyte*256),
     ]
 
