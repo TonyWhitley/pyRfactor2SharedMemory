@@ -228,7 +228,7 @@ class rF2VehicleScoring(_NOINIT):
     mSteamID: int
     mVehFilename: bytes
     mAttackMode: int
-    mFuelFraction: float
+    mFuelFraction: int
     mDRSState: bool
     mExpansion: tuple[int, ...]
 
