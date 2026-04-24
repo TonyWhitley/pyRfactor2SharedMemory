@@ -331,6 +331,24 @@ class rF2TrackRulesStage(Enum):
     CautionUpdate = 4    # update of a full-course yellow
     Maximum = 5          # should be last
 
+class IP_VehicleClass(Enum):
+    Hypercar = 0x00,
+    LMP2_ELMS = 0x02,
+    LMP2 = 0x03,
+    LMP3 = 0x04,
+    GTE = 0x05,
+    GT3 = 0x06,
+    PaceCar = 0x08,
+    Unknown = 0xFF
+
+class IP_VehicleChampionship(Enum):
+    WEC_2023 = 0x00, 
+    WEC_2024 = 0x01, 
+    WEC_2025 = 0x02,
+    WEC_2026 = 0x03,
+    ELMS_2025 = 0X10,
+    ELMS_2026 = 0x11,
+    Unknown = 0xFF
 
 # untranslated namespace rFactor2Data
 # untranslated [StructLayout(LayoutKind.Sequential, Pack = 4)]
@@ -377,7 +395,10 @@ class rF2Wheel(ctypes.Structure):
         ("mToe", ctypes.c_double),                          # current toe angle w.r.t. the vehicle
         ("mTireCarcassTemperature", ctypes.c_double),       # rough average of temperature samples from carcass (Kelvin)
         ("mTireInnerLayerTemperature", ctypes.c_double*3),  # rough average of temperature samples from innermost layer of rubber (before carcass) (Kelvin)
-        ("mExpansion", ctypes.c_ubyte*24),                  # for future use
+        ("mOptimalTemp", ctypes.c_float),
+        ("mCompoundIndex", ctypes.c_ubyte),
+        ("mCompoundType", ctypes.c_ubyte),
+        ("mExpansion", ctypes.c_ubyte*18),
     ]
 
 
@@ -459,7 +480,41 @@ class rF2VehicleTelemetry(ctypes.Structure):
         ("mElectricBoostMotorTemperature", ctypes.c_double),  # current temperature of boost motor
         ("mElectricBoostWaterTemperature", ctypes.c_double),  # current water temperature of boost motor cooler if present (0 otherwise)
         ("mElectricBoostMotorState", ctypes.c_ubyte),         # 0=unavailable 1=inactive, 2=propulsion, 3=regeneration
-        ("mExpansion", ctypes.c_ubyte*103),                   # for future use (note that the slot ID has been moved to mID above)
+        ("mLapInvalidated", ctypes.c_bool),
+        ("mABSActive", ctypes.c_bool),
+        ("mTCActive", ctypes.c_bool),
+        ("mSpeedLimiterActive", ctypes.c_bool),
+        ("mWiperState", ctypes.c_ubyte),
+        ("mTC", ctypes.c_ubyte),
+        ('mTCMax', ctypes.c_ubyte),
+        ('mTCSlip', ctypes.c_ubyte),
+        ('mTCSlipMax', ctypes.c_ubyte),
+        ('mTCCut', ctypes.c_ubyte),
+        ('mTCCutMax', ctypes.c_ubyte),
+        ('mABS', ctypes.c_ubyte),
+        ('mABSMax', ctypes.c_ubyte),
+        ('mMotorMap', ctypes.c_ubyte),
+        ('mMotorMapMax', ctypes.c_ubyte),
+        ('mMigration', ctypes.c_ubyte),
+        ('mMigrationMax', ctypes.c_ubyte),
+        ('mFrontAntiSway', ctypes.c_ubyte),
+        ('mFrontAntiSwayMax', ctypes.c_ubyte),
+        ('mRearAntiSway', ctypes.c_ubyte),
+        ('mRearAntiSwayMax', ctypes.c_ubyte),
+        ('mLiftAndCoastProgress', ctypes.c_ubyte),
+        ('mTrackLimitsSteps', ctypes.c_ubyte), # Normalized track limits points (TrackLimitPoints * TrackLimitStepsPerPoint)
+        ('mRegen', ctypes.c_float), #kW
+        ('mSoC', ctypes.c_float),
+        ('mVirtualEnergy', ctypes.c_float),
+        ('mTimeGapCarAhead', ctypes.c_float),
+        ('mTimeGapCarBehind', ctypes.c_float),
+        ('mTimeGapPlaceAhead', ctypes.c_float),
+        ('mTimeGapPlaceBehind', ctypes.c_float),
+        ("mVehicleModel", ctypes.c_ubyte*30),
+        ("mVehicleClass", ctypes.c_ubyte),
+        ("mVehicleChampionship", ctypes.c_ubyte),
+
+        ("mExpansion", ctypes.c_ubyte*20), # for future use (note that the slot ID has been moved to mID above)
         ("mWheels", rF2Wheel*4),                              # wheel info (front left, front right, rear left, rear right)
     ]
 
@@ -500,7 +555,15 @@ class rF2ScoringInfo(ctypes.Structure):
         ("mServerName", ctypes.c_char*32),        # name of the server
         ("mStartET", ctypes.c_float),             # start time (seconds since midnight) of the event
         ("mAvgPathWetness", ctypes.c_double),     # average wetness on main path 0.0-1.0
-        ("mExpansion", ctypes.c_ubyte*200),
+        ("mSessionTimeRemaining", ctypes.c_float),
+        ("mTimeOfDay", ctypes.c_float),
+        ("mIsFixedSetup", ctypes.c_bool),
+        ("mTrackGripLevel", ctypes.c_ubyte),
+        ("mCloudCoverage", ctypes.c_ubyte),
+        ("mTrackLimitsStepsPerPenalty", ctypes.c_ubyte),
+        ("mTrackLimitsStepsPerPoint", ctypes.c_ubyte),
+
+        ("mExpansion", ctypes.c_ubyte*187),
         ("mVehiclePointer", ctypes.c_ubyte*8),
     ]
 
@@ -1034,6 +1097,9 @@ def test():
     print("Driver name:", player_scor_data.mDriverName)
     print("VEH file:", player_scor_data.mVehFilename)
     print("Is local player:", player_scor_data.mIsPlayer)
+    print("SteamID:", player_scor_data.mSteamID)
+    print("FuelFraction:", player_scor_data.mFuelFraction)
+
 
     print("-"*40)
     print("Selected player telemetry info:")
