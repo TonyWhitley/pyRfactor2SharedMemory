@@ -510,7 +510,7 @@ class rF2VehicleTelemetry(ctypes.Structure):
         ('mTimeGapCarBehind', ctypes.c_float),
         ('mTimeGapPlaceAhead', ctypes.c_float),
         ('mTimeGapPlaceBehind', ctypes.c_float),
-        ("mVehicleModel", ctypes.c_ubyte*30),
+        ("mVehicleModel", ctypes.c_char*30),
         ("mVehicleClass", ctypes.c_ubyte),
         ("mVehicleChampionship", ctypes.c_ubyte),
 
@@ -1108,6 +1108,10 @@ def test():
     print("Throttle:", player_tele_data.mUnfilteredThrottle)
     print("Brake:", player_tele_data.mUnfilteredBrake)
     print("Clutch:", player_tele_data.mUnfilteredClutch)
+    print("Virtual Energy:", player_tele_data.mVirtualEnergy)
+    print("Regen:", player_tele_data.mRegen)
+    print("State of Charge?:", player_tele_data.mSoC)
+    print("Vehicle Model:", player_tele_data.mVehicleModel)
 
     player_scor_data = None
     player_tele_data = None
