@@ -30,13 +30,20 @@ def windows_mmap(name: str, size: int, pid: str) -> mmap.mmap:
     return mmap.mmap(-1, size, f"{name}{pid}")
 
 
-def linux_mmap(name: str, size: int) -> mmap.mmap:
-    """Linux mmap"""
-    file = open("/dev/shm/" + name, "a+b")
-    if file.tell() == 0:
-        file.write(b"\0" * size)
-        file.flush()
-    return mmap.mmap(file.fileno(), size)
+def linux_mmap(name: str, size: int) -> mmap.mmap | None:
+    """Linux mmap - read data from '/dev/shm/filename' if available"""
+    with open("/dev/shm/" + name, "a+b") as file:
+        stream_pos = file.tell()
+        if stream_pos == 0:  # file is empty
+            file.write(b"\0" * size)
+            file.flush()
+        elif stream_pos != size:  # file size doesn't match struct size
+            file.seek(0)
+            file.truncate(0)  # clear all data
+            file.seek(0)
+            file.write(b"\0" * size)
+            file.flush()
+        return mmap.mmap(file.fileno(), size)
 
 
 class MMapControl:
