@@ -193,7 +193,7 @@ def verify_data(info: rf2_data.SimInfo, player_index):
 if __name__ == "__main__":
     compare_struct_size()
 
-    info = rf2_data.SimInfo()
+    info = rf2_data.SimInfo(server_pid="")
 
     player_index = find_player_index(info.RF2Scor.mVehicles)
     selected_player_index = player_index

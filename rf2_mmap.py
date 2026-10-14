@@ -30,9 +30,9 @@ def windows_mmap(name: str, size: int, pid: str) -> mmap.mmap:
     return mmap.mmap(-1, size, f"{name}{pid}")
 
 
-def linux_mmap(name: str, size: int) -> mmap.mmap | None:
+def linux_mmap(name: str, size: int, pid: str) -> mmap.mmap | None:
     """Linux mmap - read data from '/dev/shm/filename' if available"""
-    with open("/dev/shm/" + name, "a+b") as file:
+    with open(f"/dev/shm/{name}{pid}", "a+b") as file:
         stream_pos = file.tell()
         if stream_pos == 0:  # file is empty
             file.write(b"\0" * size)
@@ -77,17 +77,17 @@ class MMapControl:
     def __del__(self):
         logger.info("sharedmemory: GC: MMap %s", self._mmap_name)
 
-    def create(self, access_mode: int = 0, rf2_pid: str = "") -> None:
+    def create(self, access_mode: int = 0, server_pid: str = "") -> None:
         """Create mmap instance & initial accessible copy
 
         Args:
             access_mode: 0 = copy access, 1 = direct access.
-            rf2_pid: rF2 Process ID for accessing server data.
+            server_pid: rF2 Process ID for accessing server data.
         """
         self._mmap_buffer = platform_mmap(
             name=self._mmap_name,
             size=ctypes.sizeof(self._struct),
-            pid=rf2_pid
+            pid=server_pid
         )
 
         if access_mode:

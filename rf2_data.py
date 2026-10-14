@@ -1187,25 +1187,25 @@ class rF2PluginControl(ctypes.Structure):
 class SimInfo:
     """Simulation info from shared memory"""
 
-    def __init__(self):
+    def __init__(self, server_pid: str = ""):
         self._rf2_tele = mmap.mmap(
             fileno=0,
             length=ctypes.sizeof(rF2Telemetry),
-            tagname=rFactor2Constants.MM_TELEMETRY_FILE_NAME,
+            tagname=f"{rFactor2Constants.MM_TELEMETRY_FILE_NAME}{server_pid}",
         )
         self.RF2Tele = rF2Telemetry.from_buffer(self._rf2_tele)
 
         self._rf2_scor = mmap.mmap(
             fileno=0,
             length=ctypes.sizeof(rF2Scoring),
-            tagname=rFactor2Constants.MM_SCORING_FILE_NAME,
+            tagname=f"{rFactor2Constants.MM_SCORING_FILE_NAME}{server_pid}",
         )
         self.RF2Scor = rF2Scoring.from_buffer(self._rf2_scor)
 
         self._rf2_ext = mmap.mmap(
             fileno=0,
             length=ctypes.sizeof(rF2Extended),
-            tagname=rFactor2Constants.MM_EXTENDED_FILE_NAME,
+            tagname=f"{rFactor2Constants.MM_EXTENDED_FILE_NAME}{server_pid}",
         )
         self.RF2Ext = rF2Extended.from_buffer(self._rf2_ext)
 
