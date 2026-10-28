@@ -22,7 +22,7 @@ def platform_mmap(name: str, size: int, pid: str = "") -> mmap.mmap:
     """Platform memory mapping"""
     if sys.platform == "win32":
         return windows_mmap(name, size, pid)
-    return linux_mmap(name, size)
+    return linux_mmap(name, size, pid)
 
 
 def windows_mmap(name: str, size: int, pid: str) -> mmap.mmap:
