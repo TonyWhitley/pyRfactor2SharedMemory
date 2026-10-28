@@ -1,8 +1,5 @@
 """
 rF2 Memory Map Control for accessing The Iron Wolf's rF2 Shared Memory Plugin interface
-
-Memory map control (author: Xiang)
-Cross-platform Linux support (author: Bernat)
 """
 
 from __future__ import annotations
@@ -18,21 +15,29 @@ from ._common import get_root_logger_name
 logger = logging.getLogger(get_root_logger_name())
 
 
-def platform_mmap(name: str, size: int, pid: str = "") -> mmap.mmap:
+def set_mmap_name(basename: str, prefix: str, pid: str) -> str:
+    """Set mmap file name"""
+    if prefix:
+        prefix = prefix.strip("$")  # strip off any '$' to avoid duplicates
+        basename = f"${prefix}{basename[9:]}"  # strip off default prefix $rFactor2
+    return f"{basename}{pid}"
+
+
+def platform_mmap(name: str, size: int) -> mmap.mmap:
     """Platform memory mapping"""
     if sys.platform == "win32":
-        return windows_mmap(name, size, pid)
-    return linux_mmap(name, size, pid)
+        return windows_mmap(name, size)
+    return linux_mmap(name, size)
 
 
-def windows_mmap(name: str, size: int, pid: str) -> mmap.mmap:
+def windows_mmap(name: str, size: int) -> mmap.mmap:
     """Windows mmap"""
-    return mmap.mmap(-1, size, f"{name}{pid}")
+    return mmap.mmap(-1, size, name)
 
 
-def linux_mmap(name: str, size: int, pid: str) -> mmap.mmap | None:
+def linux_mmap(name: str, size: int) -> mmap.mmap | None:
     """Linux mmap - read data from '/dev/shm/filename' if available"""
-    with open(f"/dev/shm/{name}{pid}", "a+b") as file:
+    with open(f"/dev/shm/{name}", "a+b") as file:
         stream_pos = file.tell()
         if stream_pos == 0:  # file is empty
             file.write(b"\0" * size)
@@ -50,6 +55,7 @@ class MMapControl:
     """Memory map control"""
 
     __slots__ = (
+        "_base_name",
         "_buffer",
         "_mmap_buffer",
         "_mmap_name",
@@ -66,6 +72,7 @@ class MMapControl:
             mmap_name: mmap filename, ex. $rFactor2SMMP_Scoring$.
             data_struct: ctypes data structure, ex. rF2data.rF2Scoring.
         """
+        self._base_name = mmap_name
         self._buffer = bytearray()
         self._mmap_buffer = None
         self._mmap_name = mmap_name
@@ -77,19 +84,28 @@ class MMapControl:
     def __del__(self):
         logger.info("sharedmemory: GC: MMap %s", self._mmap_name)
 
-    def create(self, access_mode: int = 0, server_pid: str = "") -> None:
+    def create(self, access_mode: int = 0, mmap_prefix: str = "", server_pid: str = "") -> None:
         """Create mmap instance & initial accessible copy
 
         Args:
             access_mode: 0 = copy access, 1 = direct access.
+            mmap_prefix: mmap name prefix to be appended to base name.
             server_pid: rF2 Process ID for accessing server data.
         """
+        # Set mmap name
+        self._mmap_name = set_mmap_name(
+            basename=self._base_name,
+            prefix=mmap_prefix,
+            pid=server_pid,
+        )
+
+        # Create mmap instance
         self._mmap_buffer = platform_mmap(
             name=self._mmap_name,
             size=ctypes.sizeof(self._struct),
-            pid=server_pid
         )
 
+        # Create buffer
         if access_mode:
             self.data = self._struct.from_buffer(self._mmap_buffer)
             self.update = self.__buffer_share
