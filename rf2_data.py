@@ -14,9 +14,8 @@ Type hints & annotation:
 from __future__ import annotations
 
 import ctypes
-import mmap
 
-from ._common import _t, typedstruct
+from ._common import _t, platform_mmap, set_mmap_name, typedstruct
 
 
 # Constants
@@ -1187,25 +1186,22 @@ class rF2PluginControl(ctypes.Structure):
 class SimInfo:
     """Simulation info from shared memory"""
 
-    def __init__(self, server_pid: str = ""):
-        self._rf2_tele = mmap.mmap(
-            fileno=0,
-            length=ctypes.sizeof(rF2Telemetry),
-            tagname=f"{rFactor2Constants.MM_TELEMETRY_FILE_NAME}{server_pid}",
+    def __init__(self, mmap_prefix: str = "", server_pid: str = ""):
+        self._rf2_tele = platform_mmap(
+            name=set_mmap_name(rFactor2Constants.MM_TELEMETRY_FILE_NAME, mmap_prefix, server_pid),
+            size=ctypes.sizeof(rF2Telemetry),
         )
         self.RF2Tele = rF2Telemetry.from_buffer(self._rf2_tele)
 
-        self._rf2_scor = mmap.mmap(
-            fileno=0,
-            length=ctypes.sizeof(rF2Scoring),
-            tagname=f"{rFactor2Constants.MM_SCORING_FILE_NAME}{server_pid}",
+        self._rf2_scor = platform_mmap(
+            name=set_mmap_name(rFactor2Constants.MM_SCORING_FILE_NAME, mmap_prefix, server_pid),
+            size=ctypes.sizeof(rF2Scoring),
         )
         self.RF2Scor = rF2Scoring.from_buffer(self._rf2_scor)
 
-        self._rf2_ext = mmap.mmap(
-            fileno=0,
-            length=ctypes.sizeof(rF2Extended),
-            tagname=f"{rFactor2Constants.MM_EXTENDED_FILE_NAME}{server_pid}",
+        self._rf2_ext = platform_mmap(
+            name=set_mmap_name(rFactor2Constants.MM_EXTENDED_FILE_NAME, mmap_prefix, server_pid),
+            size=ctypes.sizeof(rF2Extended),
         )
         self.RF2Ext = rF2Extended.from_buffer(self._rf2_ext)
 
